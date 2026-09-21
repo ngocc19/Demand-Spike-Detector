@@ -295,7 +295,7 @@ Model hoc duoc pattern tu backfill data:
 
 ---
 
-## 3. Chi Tiet Kien Truc - Tung Buoc
+
 
 ### Phase 0: OFFLINE (Training)
 
@@ -322,53 +322,36 @@ Model hoc duoc pattern tu backfill data:
 |  Step 1: BACKFILL - Thu thap du lieu LICH SU                           |
 |  ===================================================================     |
 |                                                                          |
-|  +-----------------+    +-----------------+    +-----------------+      |
-|  |  Demand Data    |    |  Weather API    |    |  Event CSV      |      |
-|  |  (Internal)     |    |  (Open-Meteo)   |    |  (Manual)       |      |
-|  |                 |    |                 |    |                 |      |
-|  | hex,timestamp,  |    | timestamp,      |    | event, venue,   |      |
-|  | requests,eta    |    | weather_code,   |    | start_time,     |      |
-|  |                 |    | precipitation   |    | type            |      |
-|  | <- INTERNAL    |    | <- Backfill    |    | <- Manual       |      |
-|  +--------+--------+    +--------+--------+    +--------+--------+      |
-|           |                      |                      |                 |
-|           +----------------------+----------------------+                 |
-|                                  |                                       |
-|                                  v                                       |
-|  +-----------------+    +-----------------+                             |
-|  |  Flood RSS      |    |  Holiday        |                             |
-|  |  (VNExpress/    |    |  Calendar       |                             |
-|  |   Wayback)      |    |  (Static)       |                             |
-|  |                 |    |                 |                             |
-|  | news titles,    |    | holiday dates,  |                             |
-|  | severity        |    | tet_phase       |                             |
-|  |                 |    |                 |                             |
-|  | <- BACKFILL    |    | <- Static      |                             |
-|  +--------+--------+    +--------+--------+                             |
-|           |                      |                                      |
-|           +----------------------+                                      |
+|  +-----------+  +-----------+  +-----------+  +-----------+  +---------+ |
+|  |  Demand   |  |  Weather  |  |   Event   |  |   Flood   |  | Holiday | |
+|  |   Data    |  |    API    |  |    CSV    |  |    RSS    |  |Calendar | |
+|  | (Internal)|  |(OpenMeteo)|  | (Manual)  |  |(VNExpress/|  | (Static)| |
+|  |           |  |           |  |           |  |  Wayback) |  |         | |
+|  | requests  |  | weather_  |  | event,    |  | news      |  | holiday | |
+|  | + eta     |  | code,     |  | venue,    |  | titles,   |  | dates,  | |
+|  |           |  | precip    |  | time      |  | severity  |  | tet_    | |
+|  |           |  |           |  |           |  |           |  | phase   | |
+|  | INTERNAL  |  | Backfill  |  |  Manual   |  | Backfill  |  | Static  | |
+|  +-----+-----+  +-----+-----+  +-----+-----+  +-----+-----+  +-----+---+ |
+|        |             |              |             |              |       |
+|        +-------------+--------------+-------------+--------------+       |
 |                                  |                                       |
 |                                  v                                       |
 |                     +----------------------------+                       |
-|                     |   FEATURE STORE            |                       |
-|                     |   (8 tuan BACKFILL)       |                       |
-|                     |                            |                       |
-|                     | hex_id | datetime |        |                       |
-|                     | weather | event |          |                       |
-|                     | flood | holiday |          |                       |
-|                     | demand <- INTERNAL         |                       |
+|                     |       FEATURE STORE        |                       |
+|                     |     (8 tuan BACKFILL)      |                       |
+|                     +----------------------------+                       |
+|                                  |                                       |
+|                                  v                                       |
+|                     +----------------------------+                       |
+|                     |      MANUAL LABELING       |                       |
+|                     |      (is_spike, cause)     |                       |
 |                     +-------------+--------------+                       |
 |                                   |                                     |
 |                                   v                                     |
 |                     +----------------------------+                       |
-|                     |  MANUAL LABELING           |                       |
-|                     |  (is_spike, cause)        |                       |
-|                     +-------------+--------------+                       |
-|                                   |                                     |
-|                                   v                                     |
-|                     +----------------------------+                       |
-|                     |  TRAIN LIGHTGBM            |                       |
-|                     |  spike_predictor.pkl      |                       |
+|                     |       TRAIN LIGHTGBM       |                       |
+|                     |     spike_predictor.pkl    |                       |
 |                     +----------------------------+                       |
 |                                                                          |
 +-------------------------------------------------------------------------+
