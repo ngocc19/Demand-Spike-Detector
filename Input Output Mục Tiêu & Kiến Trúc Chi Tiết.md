@@ -322,41 +322,54 @@ Model hoc duoc pattern tu backfill data:
 |  Step 1: BACKFILL - Thu thap du lieu LICH SU                           |
 |  ===================================================================     |
 |                                                                          |
-|  +------------------+    +------------------+    +--------------+       |
-|  |  Demand Data     |    |  Weather API     |    |  Event CSV   |       |
-|  |  (Internal)      |    |  (Open-Meteo)    |    |  (Manual)    |       |
-|  |                  |    |                  |    |              |       |
-|  | hex,timestamp,   |    | timestamp,       |    | event, venue |       |
-|  | requests,eta     |    | weather_code,    |    | start_time,  |       |
-|  |                  |    | precipitation    |    | type         |       |
-|  | <- BACKFILL     |    | <- Backfill     |    | <- Manual   |       |
-|  +--------+---------+    +--------+---------+    +------+------+       |
-|           |                       |                       |               |
-|           +----------------------+-----------------------+               |
-|                                  |                                   |
-|                                  v                                   |
-|                     +----------------------------+                    |
-|                     |   FEATURE STORE            |                    |
-|                     |   (8 tuan BACKFILL)       |                    |
-|                     |                            |                    |
-|                     | hex_id | datetime |        |                    |
-|                     | weather | event |          |                    |
-|                     | flood <- BACKFILL          |                    |
-|                     | holiday <- BACKFILL        |                    |
-|                     | demand <- INTERNAL         |                    |
-|                     +-------------+--------------+                    |
-|                                   |                                  |
-|                                   v                                  |
-|                     +----------------------------+                    |
-|                     |  MANUAL LABELING           |                    |
-|                     |  (is_spike, cause)        |                    |
-|                     +-------------+--------------+                    |
-|                                   |                                  |
-|                                   v                                  |
-|                     +----------------------------+                    |
-|                     |  TRAIN LIGHTGBM            |                    |
-|                     |  spike_predictor.pkl      |                    |
-|                     +----------------------------+                    |
+|  +-----------------+    +-----------------+    +-----------------+      |
+|  |  Demand Data    |    |  Weather API    |    |  Event CSV      |      |
+|  |  (Internal)     |    |  (Open-Meteo)   |    |  (Manual)       |      |
+|  |                 |    |                 |    |                 |      |
+|  | hex,timestamp,  |    | timestamp,      |    | event, venue,   |      |
+|  | requests,eta    |    | weather_code,   |    | start_time,     |      |
+|  |                 |    | precipitation   |    | type            |      |
+|  | <- INTERNAL    |    | <- Backfill    |    | <- Manual       |      |
+|  +--------+--------+    +--------+--------+    +--------+--------+      |
+|           |                      |                      |                 |
+|           +----------------------+----------------------+                 |
+|                                  |                                       |
+|                                  v                                       |
+|  +-----------------+    +-----------------+                             |
+|  |  Flood RSS      |    |  Holiday        |                             |
+|  |  (VNExpress/    |    |  Calendar       |                             |
+|  |   Wayback)      |    |  (Static)       |                             |
+|  |                 |    |                 |                             |
+|  | news titles,    |    | holiday dates,  |                             |
+|  | severity        |    | tet_phase       |                             |
+|  |                 |    |                 |                             |
+|  | <- BACKFILL    |    | <- Static      |                             |
+|  +--------+--------+    +--------+--------+                             |
+|           |                      |                                      |
+|           +----------------------+                                      |
+|                                  |                                       |
+|                                  v                                       |
+|                     +----------------------------+                       |
+|                     |   FEATURE STORE            |                       |
+|                     |   (8 tuan BACKFILL)       |                       |
+|                     |                            |                       |
+|                     | hex_id | datetime |        |                       |
+|                     | weather | event |          |                       |
+|                     | flood | holiday |          |                       |
+|                     | demand <- INTERNAL         |                       |
+|                     +-------------+--------------+                       |
+|                                   |                                     |
+|                                   v                                     |
+|                     +----------------------------+                       |
+|                     |  MANUAL LABELING           |                       |
+|                     |  (is_spike, cause)        |                       |
+|                     +-------------+--------------+                       |
+|                                   |                                     |
+|                                   v                                     |
+|                     +----------------------------+                       |
+|                     |  TRAIN LIGHTGBM            |                       |
+|                     |  spike_predictor.pkl      |                       |
+|                     +----------------------------+                       |
 |                                                                          |
 +-------------------------------------------------------------------------+
 ```
