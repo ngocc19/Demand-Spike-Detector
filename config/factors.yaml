@@ -1,0 +1,103 @@
+# ============================================================
+# FACTORS CONFIGURATION
+# ======================
+#
+# This file configures all factor plugins for the pipeline.
+# Adding a new factor = Add a new plugin file + Add config here
+#
+# ============================================================
+
+factors:
+  # ============================================================
+  # WEATHER
+  # Source: Open-Meteo API (FREE, no API key required)
+  # Schedule: Every hour
+  # ============================================================
+  - name: weather
+    type: api
+    source: open_meteo
+    schedule: "0 * * * *"
+    enabled: true
+    config:
+      # Hanoi coordinates
+      latitude: 21.0285
+      longitude: 105.8542
+      radius_km: 30
+      timezone: "Asia/Ho_Chi_Minh"
+      forecast_days: 7
+      past_days: 0  # Set > 0 for backfill (e.g., 60 for 60 days)
+
+  # ============================================================
+  # FLOOD
+  # Source: VNExpress RSS (FREE)
+  # Schedule: Every 15 minutes
+  # ============================================================
+  - name: flood
+    type: rss
+    source: vnexpress_rss
+    schedule: "*/15 * * * *"
+    enabled: true
+    config:
+      rss_sources:
+        - "https://vnexpress.net/rss/thoi-su.rss"
+      max_entries: 50
+      max_age_hours: 24
+      geocoding_api: nominatim
+      # Hanoi coordinates (for default coverage)
+      latitude: 21.0285
+      longitude: 105.8542
+
+  # ============================================================
+  # EVENTS
+  # Source: Manual CSV (or Ticketbox API if available)
+  # Schedule: Daily at 23:00
+  # ============================================================
+  - name: event
+    type: csv
+    source: manual
+    schedule: "0 23 * * *"
+    enabled: true
+    config:
+      csv_path: "data/events.csv"
+      impact_radius: 3  # Number of hexes around venue
+      venue_coords:
+        # Stadiums
+        svd_my_dinh: [21.0285, 105.8195]
+        thong_nhat: [10.7795, 106.7312]
+        # Concert venues
+        arena: [21.0065, 105.8195]
+        # Exhibition centers
+        ice: [21.0150, 105.7850]
+
+  # ============================================================
+  # HOLIDAYS
+  # Source: Static calendar (Vietnam holidays)
+  # Schedule: Load at start of year + on-demand
+  # ============================================================
+  - name: holiday
+    type: file
+    source: static
+    schedule: "0 0 1 1 *"
+    enabled: true
+    config:
+      holiday_file: "data/holidays.csv"
+      tet_date: "2025-01-29"  # Tet 2025
+      impact_radius: 50  # Whole city
+
+# ============================================================
+# BACKFILL SETTINGS
+# ==================
+# For Phase 0 (Training), set past_days > 0 to fetch
+# historical data from Open-Meteo API.
+# ============================================================
+
+backfill:
+  weather:
+    past_days: 60  # Fetch 60 days of historical weather data
+  flood:
+    use_wayback_machine: true
+    max_archive_days: 90
+  events:
+    manual_collection: true  # Manual CSV collection
+  holidays:
+    include_tet_phases: true
