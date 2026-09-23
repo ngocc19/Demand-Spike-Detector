@@ -1,0 +1,10 @@
+event_name,venue,start_time,end_time,event_type
+Ca khuc hoa tau,svd_my_dinh,2024-09-01 19:00:00,2024-09-01 22:00:00,concert
+Tran dau bong da V-League,thong_nhat,2024-09-05 17:00:00,2024-09-05 19:00:00,football
+Hoi cho quoc te,tet_exhibition,2024-09-10 09:00:00,2024-09-12 18:00:00,exhibition
+Le hoi 2/9,hoan_kiem,2024-09-02 08:00:00,2024-09-02 12:00:00,festival
+Su kien Tech Conference,ice,2024-09-15 08:00:00,2024-09-15 17:00:00,conference
+Tran dau Champions League,thong_nhat,2024-09-18 22:00:00,2024-09-19 00:00:00,football
+Mua he yeu duong,SVD My Dinh,2024-09-20 20:00:00,2024-09-20 23:00:00,concert
+Festival ao cuoi,quan_1_center,2024-09-21 10:00:00,2024-09-21 22:00:00,festival
+Workshop AI,ice,2024-09-25 14:00:00,2024-09-25 17:00:00,workshop
