@@ -125,13 +125,29 @@ class PluginRegistry:
 
 # Import all plugins to register them
 # NOTE: Import order matters - base.py must be loaded first
-from .plugins.weather_plugin import WeatherFactorPlugin
-from .plugins.flood_plugin import FloodFactorPlugin
 from .plugins.event_plugin import EventFactorPlugin
 from .plugins.holiday_plugin import HolidayFactorPlugin
 
+# Weather ensemble plugins
+from .plugins.owm_plugin import OWMFactorPlugin
+from .plugins.vcw_plugin import VCWFactorPlugin
+from .plugins.nchmf_plugin import NCHMFFactorPlugin
+from .plugins.hsdc_plugin import HSDCFactorPlugin
+from .plugins.weather_ensemble_plugin import WeatherEnsemblePlugin
+
+# HSDC flood plugin
+from .plugins.hsdc_flood_plugin import HSDCFloodPlugin
+
 # Register plugins with registry
-PluginRegistry.register("weather")(WeatherFactorPlugin)
-PluginRegistry.register("flood")(FloodFactorPlugin)
 PluginRegistry.register("event")(EventFactorPlugin)
 PluginRegistry.register("holiday")(HolidayFactorPlugin)
+
+# Register weather ensemble plugins
+PluginRegistry.register("owm")(OWMFactorPlugin)
+PluginRegistry.register("vcw")(VCWFactorPlugin)
+PluginRegistry.register("nchmf")(NCHMFFactorPlugin)
+PluginRegistry.register("hsdc")(HSDCFactorPlugin)
+PluginRegistry.register("weather_ensemble")(WeatherEnsemblePlugin)
+
+# Register HSDC flood plugin
+PluginRegistry.register("hsdc_flood")(HSDCFloodPlugin)
