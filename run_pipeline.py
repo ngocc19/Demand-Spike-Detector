@@ -1,241 +1,78 @@
-"""
-Quick Test Script for Data Pipeline
-====================================
+"""Command-line entry point for local pipeline jobs."""
 
-Run this to test individual plugins or the full pipeline.
-"""
+from __future__ import annotations
 
+import argparse
+import json
+import logging
 import sys
-import os
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+from src.pipeline.orchestrator import EventIngestionJob
 
 
-def test_weather_plugin():
-    """Test Weather Plugin."""
-    print("\n" + "="*60)
-    print("TESTING: Weather Plugin")
-    print("="*60)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Demand Spike Detector pipeline")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    from src.pipeline.plugins.weather_plugin import WeatherFactorPlugin
-
-    config = {
-        'name': 'weather',
-        'latitude': 21.0285,  # Hanoi
-        'longitude': 105.8542,
-        'radius_km': 10,
-        'timezone': 'Asia/Ho_Chi_Minh',
-        'forecast_days': 2,
-    }
-
-    plugin = WeatherFactorPlugin(config)
-
-    # Fetch
-    df = plugin.fetch()
-    print(f"\nFetched {len(df)} weather records")
-    print(df.head())
-
-    # Transform
-    df = plugin.transform(df)
-    print(f"\nAfter transform:")
-    print(df[['datetime', 'weather_code', 'weather_impact', 'value', 'severity']].head())
-
-    # Map spatial
-    df = plugin.map_spatial(df)
-    print(f"\nAfter spatial mapping: {len(df)} records")
-    print(f"Unique hex_ids: {df['hex_id'].nunique()}")
-
-    return df
+    ingest_events = subparsers.add_parser(
+        "ingest-events",
+        help="Fetch, version, and persist events from one configured source.",
+    )
+    ingest_events.add_argument(
+        "--source",
+        required=True,
+        help="Source key from config/factors.yaml, for example van_mieu.",
+    )
+    ingest_events.add_argument(
+        "--config",
+        default="config/factors.yaml",
+        help="Path to the pipeline YAML configuration.",
+    )
+    ingest_events.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
+        help="Minimum log level sent to stderr.",
+    )
+    ingest_events.add_argument(
+        "--full-scan",
+        action="store_true",
+        help="Ignore the saved watermark and re-fetch all pages for this source.",
+    )
+    return parser
 
 
-def test_flood_plugin():
-    """Test Flood Plugin."""
-    print("\n" + "="*60)
-    print("TESTING: Flood Plugin")
-    print("="*60)
-
-    from src.pipeline.plugins.flood_plugin import FloodFactorPlugin
-
-    config = {
-        'name': 'flood',
-        'rss_sources': ['https://vnexpress.net/rss/thoi-su.rss'],
-        'latitude': 21.0285,
-        'longitude': 105.8542,
-    }
-
-    plugin = FloodFactorPlugin(config)
-
-    # Fetch
-    df = plugin.fetch()
-    print(f"\nFetched {len(df)} flood news")
-
-    if not df.empty:
-        print("\nSample entries:")
-        print(df[['title', 'published']].head())
-
-        # Transform
-        df = plugin.transform(df)
-        print(f"\nAfter transform:")
-        print(df[['title', 'severity', 'value']].head())
-
-    return df
-
-
-def test_event_plugin():
-    """Test Event Plugin."""
-    print("\n" + "="*60)
-    print("TESTING: Event Plugin")
-    print("="*60)
-
-    from src.pipeline.plugins.event_plugin import EventFactorPlugin
-
-    config = {
-        'name': 'event',
-        'csv_path': 'data/events.csv',
-    }
-
-    plugin = EventFactorPlugin(config)
-
-    # Fetch
-    df = plugin.fetch()
-    print(f"\nFetched {len(df)} events")
-    print(df.head())
-
-    # Transform
-    df = plugin.transform(df)
-    print(f"\nAfter transform:")
-    print(df[['event_name', 'event_type', 'value', 'severity']].head())
-
-    # Map spatial
-    df = plugin.map_spatial(df)
-    print(f"\nAfter spatial mapping: {len(df)} records")
-
-    return df
-
-
-def test_holiday_plugin():
-    """Test Holiday Plugin."""
-    print("\n" + "="*60)
-    print("TESTING: Holiday Plugin")
-    print("="*60)
-
-    from src.pipeline.plugins.holiday_plugin import HolidayFactorPlugin
-
-    config = {
-        'name': 'holiday',
-        'holiday_file': 'data/holidays.csv',
-    }
-
-    plugin = HolidayFactorPlugin(config)
-
-    # Fetch
-    df = plugin.fetch()
-    print(f"\nFetched {len(df)} holidays")
-    print(df.head())
-
-    # Transform
-    df = plugin.transform(df)
-    print(f"\nAfter transform:")
-    print(df[['date', 'holiday_name', 'tet_phase', 'value', 'severity']].head())
-
-    # Map spatial
-    df = plugin.map_spatial(df)
-    print(f"\nAfter spatial mapping: {len(df)} records")
-    print(f"Unique hex_ids: {df['hex_id'].nunique()}")
-
-    return df
-
-
-def test_registry():
-    """Test Plugin Registry."""
-    print("\n" + "="*60)
-    print("TESTING: Plugin Registry")
-    print("="*60)
-
-    from src.pipeline.registry import PluginRegistry
-
-    print(f"\nRegistered plugins: {PluginRegistry.list_plugins()}")
-
-
-def test_full_pipeline():
-    """Test full pipeline with Orchestrator."""
-    print("\n" + "="*60)
-    print("TESTING: Full Pipeline")
-    print("="*60)
-
-    from src.pipeline.orchestrator import PipelineOrchestrator
-
-    orchestrator = PipelineOrchestrator(
-        config_path='config/factors.yaml',
-        feature_store_path='data/feature_store.csv'
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    print(f"\nLoaded plugins: {list(orchestrator.plugins.keys())}")
+    if args.command == "ingest-events":
+        try:
+            summary = EventIngestionJob.from_yaml(args.config, args.source).run(
+                force_full_scan=args.full_scan
+            )
+        except Exception as error:
+            print(
+                json.dumps(
+                    {
+                        "status": "failed",
+                        "source": args.source,
+                        "error_type": type(error).__name__,
+                        "error": str(error),
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
 
-    # Run all plugins
-    df = orchestrator.run_all_plugins()
-
-    print(f"\n{'='*60}")
-    print("RESULT: Feature Store")
-    print("="*60)
-    print(f"Total records: {len(df)}")
-    print(f"Columns: {list(df.columns)}")
-
-    if not df.empty:
-        print("\nSample data:")
-        print(df.head())
-
-        # Summary
-        print("\nFactor statistics:")
-        for col in df.columns:
-            if col not in ['hex_id', 'datetime_30min']:
-                non_zero = (df[col] > 0).sum()
-                print(f"  {col}: {non_zero} non-zero records ({non_zero/len(df)*100:.1f}%)")
-
-
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Test Data Pipeline')
-    parser.add_argument(
-        '--plugin',
-        choices=['weather', 'flood', 'event', 'holiday', 'all'],
-        default='all',
-        help='Which plugin to test'
-    )
-    parser.add_argument(
-        '--registry',
-        action='store_true',
-        help='Test plugin registry'
-    )
-
-    args = parser.parse_args()
-
-    if args.registry:
-        test_registry()
-        return
-
-    if args.plugin in ['weather', 'all']:
-        test_weather_plugin()
-
-    if args.plugin in ['flood', 'all']:
-        test_flood_plugin()
-
-    if args.plugin in ['event', 'all']:
-        test_event_plugin()
-
-    if args.plugin in ['holiday', 'all']:
-        test_holiday_plugin()
-
-    if args.plugin == 'all':
-        test_registry()
-        test_full_pipeline()
-
-    print("\n" + "="*60)
-    print("ALL TESTS COMPLETED")
-    print("="*60)
+    raise AssertionError(f"Unhandled command: {args.command}")
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,11 @@
+# Generated Python files
+__pycache__/
+*.py[cod]
+
+# Generated pipeline artifacts
+data/raw/
+data/staging/
+data/curated/
+data/manifests/
+data/quarantine/
+data/state/

@@ -1,217 +1,168 @@
-"""
-Base classes and data contracts for Factor Plugins
-===================================================
+"""Shared contracts and deterministic helpers for event ingestion."""
 
-This module defines the standardized interfaces that all factor plugins
-must implement, ensuring consistent data format across the pipeline.
-"""
+from __future__ import annotations
 
+import hashlib
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from enum import Enum
-import pandas as pd
+from datetime import datetime, timezone
+from typing import Any, Mapping
 
 
-class FactorType(Enum):
-    """Enum defining all available factor types."""
-    WEATHER = "weather"
-    FLOOD = "flood"
-    EVENT = "event"
-    HOLIDAY = "holiday"
-    AOE_SALE = "aoe_sale"          # Flash sale - Affect-Of-Offer
-    CONCERT = "concert"            # Concert/Performance
-    SPORT_MATCH = "sport_match"    # Sports event
-    NEWS = "news"                  # Breaking news
-    TRAFFIC = "traffic"            # Traffic congestion
-    POLLUTION = "pollution"        # AQI level
+UTC = timezone.utc
+EVENT_SCHEMA_VERSION = "1.0"
 
 
-@dataclass
-class FactorRecord:
-    """
-    Standardized data contract - ALL factors must return this format.
+def utc_now() -> datetime:
+    """Return a timezone-aware UTC timestamp."""
 
-    This is the "lingua franca" of the pipeline, ensuring consistency.
-    """
-    hex_id: str                           # H3 hex ID
-    datetime_30min: datetime             # Time slot (aligned to 30 min)
-    factor_type: FactorType              # Type of factor
-    factor_name: str                     # Specific name: "heavy_rain", "football_match"
-    value: float                         # Impact value (0.0 - 1.0 or raw)
-    severity: Optional[str] = None       # LOW, MEDIUM, HIGH, SEVERE
-    metadata: Dict[str, Any] = field(default_factory=dict)  # Raw data
-    confidence: float = 1.0              # Data reliability
-    source: str = ""                     # Data source
-    ingested_at: datetime = field(default_factory=datetime.now)
+    return datetime.now(UTC)
 
-    def to_dict(self) -> Dict:
-        """Convert to dict for storage in Feature Store."""
-        return {
-            "hex_id": self.hex_id,
-            "datetime_30min": self.datetime_30min.strftime("%Y-%m-%d %H:%M:%S"),
-            "factor_type": self.factor_type.value,
-            "factor_name": self.factor_name,
-            "value": self.value,
-            "severity": self.severity,
-            "metadata": str(self.metadata),
-            "confidence": self.confidence,
+
+def to_utc_iso(value: datetime) -> str:
+    """Serialize a timezone-aware datetime in one canonical UTC form."""
+
+    if value.tzinfo is None:
+        raise ValueError("Datetime must include a timezone.")
+    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def parse_datetime_utc(value: object, field_name: str) -> str | None:
+    """Parse an ISO-8601 source timestamp and return canonical UTC text."""
+
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be an ISO-8601 string or null.")
+
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as error:
+        raise ValueError(f"{field_name} is not a valid ISO-8601 timestamp.") from error
+
+    if parsed.tzinfo is None:
+        raise ValueError(f"{field_name} must include an explicit timezone.")
+    return to_utc_iso(parsed)
+
+
+def canonical_json_hash(value: object) -> str:
+    """Hash JSON deterministically so records can be versioned reliably."""
+
+    encoded = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class FetchResult:
+    """Raw response material from a source before source-specific parsing."""
+
+    source: str
+    endpoint: str
+    requested_at_utc: str
+    response_pages: list[dict[str, Any]]
+    fetched_records: list[dict[str, Any]]
+    http_statuses: list[int]
+    watermark_used: str | None
+    response_headers: dict[str, str] = field(default_factory=dict)
+    state_updates: dict[str, Any] = field(default_factory=dict)
+    not_modified: bool = False
+
+
+@dataclass(frozen=True)
+class EventDraft:
+    """A normalized event before it is assigned a revision by storage."""
+
+    source: str
+    source_event_id: str
+    title: str
+    description: str | None
+    raw_category: str | None
+    primary_category: str
+    publication_status: str | None
+    event_status: str
+    start_at_utc: str
+    end_at_utc: str | None
+    venue_raw: str | None
+    source_url: str
+    source_created_at_utc: str | None
+    source_updated_at_utc: str | None
+    raw_payload_sha256: str
+    city: str = "hanoi"
+    tags: list[str] = field(default_factory=list)
+    estimated_attendees: int | None = None
+    attendee_estimation_method: str | None = None
+    venue_capacity: int | None = None
+    venue_capacity_key: str | None = None
+    official_attendance: int | None = None
+    attendance_source_url: str | None = None
+
+    def to_record(self, run_id: str, ingested_at_utc: str) -> dict[str, Any]:
+        """Return the canonical curated record without storage-owned fields."""
+
+        event_id = f"{self.source}:{self.source_event_id}"
+        version_material = {
             "source": self.source,
-            "ingested_at": self.ingested_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "source_event_id": self.source_event_id,
+            "title": self.title,
+            "description": self.description,
+            "raw_category": self.raw_category,
+            "primary_category": self.primary_category,
+            "publication_status": self.publication_status,
+            "event_status": self.event_status,
+            "start_at_utc": self.start_at_utc,
+            "end_at_utc": self.end_at_utc,
+            "venue_raw": self.venue_raw,
+            "source_url": self.source_url,
+            "source_created_at_utc": self.source_created_at_utc,
+            "source_updated_at_utc": self.source_updated_at_utc,
+            "raw_payload_sha256": self.raw_payload_sha256,
+            "city": self.city,
+            "tags": self.tags,
+            "estimated_attendees": self.estimated_attendees,
+            "attendee_estimation_method": self.attendee_estimation_method,
+            "venue_capacity": self.venue_capacity,
+            "venue_capacity_key": self.venue_capacity_key,
+            "official_attendance": self.official_attendance,
+            "attendance_source_url": self.attendance_source_url,
+        }
+        return {
+            "event_id": event_id,
+            **version_material,
+            "version_hash": canonical_json_hash(version_material),
+            "venue_id": None,
+            "latitude": None,
+            "longitude": None,
+            "location_status": "unresolved" if self.venue_raw else "missing",
+            "ingested_at_utc": ingested_at_utc,
+            "run_id": run_id,
+            "schema_version": EVENT_SCHEMA_VERSION,
         }
 
 
-class BaseFactorPlugin(ABC):
-    """
-    Abstract Base Class for all Factor Plugins.
+class EventSource(ABC):
+    """Contract implemented by each permitted event source adapter."""
 
-    Design Pattern: Template Method + Strategy
-    - Template Method: run_pipeline() defines the skeleton
-    - Strategy: fetch(), transform(), map_spatial() are implemented per plugin
-    """
-
-    # Class variables - override in subclass
-    factor_type: FactorType = FactorType.WEATHER
-    factor_name: str = "base"
-    schedule: str = "0 * * * *"  # Cron format (every hour by default)
-
-    def __init__(self, config: Dict[str, Any]):
-        """
-        Args:
-            config: Configuration dict from factors.yaml
-        """
-        self.config = config
-        self.raw_data: Optional[pd.DataFrame] = None
-        self.processed_data: List[FactorRecord] = []
+    source_name: str
 
     @abstractmethod
-    def fetch(self) -> pd.DataFrame:
-        """
-        Step 1: Fetch raw data from source (API, RSS, File, etc.)
+    def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
+        """Fetch source payloads without mutating persistent state."""
 
-        Returns:
-            DataFrame with raw data
-        """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Step 2: Transform raw data -> clean, normalized format
+    def normalize(self, raw_record: Mapping[str, Any]) -> EventDraft:
+        """Turn one source-specific record into the common event contract."""
 
-        Args:
-            df: Raw data from fetch()
-
-        Returns:
-            DataFrame with cleaned and normalized data
-        """
-        pass
-
-    @abstractmethod
-    def map_spatial(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Step 3: Map location -> H3 hex_id
-
-        Args:
-            df: Cleaned data from transform()
-
-        Returns:
-            DataFrame with 'hex_id' column added
-        """
-        pass
-
-    def align_temporal(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Step 4: Align time to 30-minute grid
-
-        Args:
-            df: DataFrame with 'datetime' column
-
-        Returns:
-            DataFrame with 'datetime_30min' column
-        """
-        df = df.copy()
-
-        if 'datetime' not in df.columns:
-            raise ValueError("DataFrame must have 'datetime' column")
-
-        # Floor to 30-minute grid
-        df['datetime_30min'] = df['datetime'].dt.floor('30min')
-
-        return df
-
-    def validate(self, df: pd.DataFrame) -> bool:
-        """
-        Step 5: Validate output
-
-        Args:
-            df: Final DataFrame
-
-        Returns:
-            True if valid, raise exception otherwise
-        """
-        required_cols = ['hex_id', 'datetime_30min', 'value']
-        missing = [col for col in required_cols if col not in df.columns]
-
-        if missing:
-            raise ValueError(f"Missing required columns: {missing}")
-
-        return True
-
-    def run_pipeline(self) -> List[FactorRecord]:
-        """
-        Template Method - Pipeline skeleton
-
-        Flow: fetch -> transform -> map_spatial -> align_temporal -> validate -> output
-        """
-        print(f"[{self.factor_name}] Starting pipeline...")
-
-        # Step 1: Fetch
-        self.raw_data = self.fetch()
-        print(f"[{self.factor_name}] Fetched {len(self.raw_data)} records")
-
-        # Step 2: Transform
-        df = self.transform(self.raw_data)
-        print(f"[{self.factor_name}] Transformed to {len(df)} clean records")
-
-        # Step 3: Spatial mapping
-        df = self.map_spatial(df)
-        print(f"[{self.factor_name}] Mapped to H3 hex_ids")
-
-        # Step 4: Temporal alignment
-        df = self.align_temporal(df)
-
-        # Step 5: Validate
-        self.validate(df)
-        print(f"[{self.factor_name}] Validation passed")
-
-        # Step 6: Convert to FactorRecord
-        self.processed_data = self._to_factor_records(df)
-        print(f"[{self.factor_name}] Generated {len(self.processed_data)} FactorRecords")
-
-        return self.processed_data
-
-    def _to_factor_records(self, df: pd.DataFrame) -> List[FactorRecord]:
-        """Convert DataFrame rows to FactorRecord objects."""
-        records = []
-
-        for _, row in df.iterrows():
-            record = FactorRecord(
-                hex_id=row['hex_id'],
-                datetime_30min=row['datetime_30min'],
-                factor_type=self.factor_type,
-                factor_name=self.factor_name,
-                value=row['value'],
-                severity=row.get('severity'),
-                metadata=row.get('metadata', {}),
-                confidence=row.get('confidence', 1.0),
-                source=self.config.get('source', ''),
-            )
-            records.append(record)
-
-        return records
-
-    def get_records_df(self) -> pd.DataFrame:
-        """Get processed data as DataFrame for Feature Store insertion."""
-        return pd.DataFrame([r.to_dict() for r in self.processed_data])
+        raise NotImplementedError

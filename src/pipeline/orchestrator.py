@@ -1,265 +1,374 @@
-"""
-Pipeline Orchestrator
-====================
+"""Event ingestion orchestration.
 
-Orchestrates all factor plugins and merges output to Feature Store.
+This layer deliberately stops at curated event records.  Spatial allocation and
+model features are separate downstream jobs.
 """
 
+from __future__ import annotations
+
+import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
-import pandas as pd
+from typing import Any, Mapping
 
-from .registry import PluginRegistry
-from .base import BaseFactorPlugin, FactorRecord
+import yaml
+
+from .attendance import VenueAttendanceEstimator
+from .base import EventSource, parse_datetime_utc, to_utc_iso, utc_now
+from .event_csv import EventCsvExporter
+from .event_workbook import EventWorkbookExporter
+from .registry import build_event_source
+from .storage import EventLake
 
 
-class PipelineOrchestrator:
-    """
-    Orchestrates all plugins and writes to Feature Store.
+LOGGER = logging.getLogger(__name__)
 
-    Key Design:
-    - Plugins are loaded dynamically from config
-    - No hard-coded plugin names
-    - Adding a new factor = adding a config line + plugin file
-    """
+
+class EventIngestionJob:
+    """Run one source through fetch, raw persistence, curation, and state."""
 
     def __init__(
         self,
-        config_path: str = "config/factors.yaml",
-        feature_store_path: str = "data/feature_store.csv"
-    ):
-        """
-        Args:
-            config_path: Path to factors.yaml
-            feature_store_path: Path to output Feature Store
-        """
-        self.config_path = config_path
-        self.feature_store_path = Path(feature_store_path)
+        config: Mapping[str, Any],
+        source_name: str,
+        source: EventSource | None = None,
+        lake: EventLake | None = None,
+    ) -> None:
+        self.config = dict(config)
+        self.source_name = source_name
+        pipeline_config = self._mapping(self.config.get("pipeline"), "pipeline")
+        events_config = self._mapping(self.config.get("events"), "events")
+        sources_config = self._mapping(events_config.get("sources"), "events.sources")
+        source_config = self._mapping(
+            sources_config.get(source_name), f"events.sources.{source_name}"
+        )
+        if source_config.get("enabled", True) is False:
+            raise ValueError(f"Event source '{source_name}' is disabled in config.")
 
-        # Load all plugins from config
-        self.plugins: Dict[str, BaseFactorPlugin] = PluginRegistry.load_from_config(config_path)
+        self.source_config = source_config
+        self.source = source or build_event_source(source_name, source_config)
+        self.lake = lake or EventLake(pipeline_config.get("data_dir", "data"))
+        date_window = events_config.get("event_date_window", {})
+        if not isinstance(date_window, Mapping):
+            raise ValueError("Config section 'events.event_date_window' must be a mapping.")
+        self.attendance_estimator = VenueAttendanceEstimator(
+            events_config.get("attendance_estimation", {})
+        )
+        self.csv_exporter = EventCsvExporter(
+            self.lake.root,
+            timezone_name=str(pipeline_config.get("timezone", "Asia/Ho_Chi_Minh")),
+            output_file=str(events_config.get("csv_output_file", "events.csv")),
+            start_date=date_window.get("start_date"),
+            end_date=date_window.get("end_date"),
+        )
+        self.workbook_exporter = EventWorkbookExporter(
+            self.lake.root,
+            output_file=str(events_config.get("workbook_output_file", "events.xlsx")),
+            classification=events_config.get("sheet_classification"),
+        )
+        self.full_scan_every_runs = self._positive_int(
+            source_config.get("full_scan_every_runs", 4),
+            "events.sources.full_scan_every_runs",
+        )
 
-        # Feature Store cache (in-memory)
-        self.feature_store: Optional[pd.DataFrame] = None
+    @classmethod
+    def from_yaml(cls, config_path: str | Path, source_name: str) -> "EventIngestionJob":
+        """Load the source configuration selected by the CLI."""
 
-        print(f"[Orchestrator] Loaded {len(self.plugins)} plugins: {list(self.plugins.keys())}")
+        path = Path(config_path)
+        with path.open("r", encoding="utf-8") as handle:
+            loaded = yaml.safe_load(handle)
+        if not isinstance(loaded, dict):
+            raise ValueError(f"Config must be a YAML mapping: {path}")
+        return cls(loaded, source_name)
 
-    def run_plugin(self, plugin_name: str) -> pd.DataFrame:
-        """
-        Run a specific plugin.
+    def run(self, force_full_scan: bool = False) -> dict[str, Any]:
+        run_started_at_utc = to_utc_iso(utc_now())
+        run_id = self._run_id(run_started_at_utc)
+        state = self.lake.read_source_state(self.source_name)
+        full_scan = force_full_scan or self._should_run_full_scan(state)
 
-        Args:
-            plugin_name: Name of the plugin to run
+        try:
+            fetch_result = self.source.fetch(state, full_scan=full_scan)
+            completed_at_utc = to_utc_iso(utc_now())
 
-        Returns:
-            DataFrame with factor records
-
-        Raises:
-            ValueError: If plugin not found in config
-        """
-        if plugin_name not in self.plugins:
-            raise ValueError(
-                f"Plugin '{plugin_name}' not found. "
-                f"Available plugins: {list(self.plugins.keys())}"
-            )
-
-        plugin = self.plugins[plugin_name]
-
-        print(f"\n{'='*60}")
-        print(f"Running plugin: {plugin_name}")
-        print(f"{'='*60}")
-
-        # Run pipeline
-        records = plugin.run_pipeline()
-
-        # Get DataFrame output
-        df = plugin.get_records_df()
-
-        print(f"✓ {plugin_name} completed: {len(df)} records")
-
-        return df
-
-    def run_all_plugins(self) -> pd.DataFrame:
-        """
-        Run all plugins and merge into Feature Store.
-
-        Returns:
-            Combined Feature Store DataFrame
-        """
-        all_dfs = []
-
-        for plugin_name in self.plugins.keys():
-            try:
-                df = self.run_plugin(plugin_name)
-                if not df.empty:
-                    all_dfs.append(df)
-            except Exception as e:
-                print(f"✗ Error running {plugin_name}: {e}")
-                # Continue with other plugins
-                continue
-
-        if not all_dfs:
-            print("Warning: No plugins completed successfully")
-            return pd.DataFrame()
-
-        # Concatenate all factor records
-        combined_df = pd.concat(all_dfs, ignore_index=True)
-
-        # Pivot to wide format (feature per column)
-        feature_store = self._pivot_to_feature_store(combined_df)
-
-        # Save to file
-        self._save_feature_store(feature_store)
-
-        return feature_store
-
-    def _pivot_to_feature_store(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Pivot long format -> wide format.
-
-        Input:  hex_id, datetime_30min, factor_name, value
-        Output: hex_id, datetime_30min, weather, flood, event, holiday, ...
-        """
-        if df.empty:
-            return pd.DataFrame()
-
-        # Get value column (handle both 'value' and 'weather_impact' etc.)
-        value_col = 'value' if 'value' in df.columns else 'weather_impact'
-
-        # Aggregate: take max value if duplicate (multiple factors at same time)
-        agg_df = df.groupby(['hex_id', 'datetime_30min', 'factor_name'])[value_col].max().reset_index()
-
-        # Pivot
-        pivoted = agg_df.pivot_table(
-            index=['hex_id', 'datetime_30min'],
-            columns='factor_name',
-            values=value_col,
-            aggfunc='first'
-        ).reset_index()
-
-        # Flatten column names
-        pivoted.columns.name = None
-
-        # Fill NaN with 0 (no impact)
-        pivoted = pivoted.fillna(0)
-
-        return pivoted
-
-    def _save_feature_store(self, df: pd.DataFrame):
-        """Save Feature Store to disk."""
-        # Create directory if not exists
-        self.feature_store_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Determine format from extension
-        if self.feature_store_path.suffix == '.parquet':
-            format = 'parquet'
-            mode = 'append'
-        else:
-            format = 'csv'
-            mode = 'overwrite'
-
-        # Append or overwrite
-        if self.feature_store_path.exists() and mode == 'append':
-            try:
-                existing = pd.read_parquet(self.feature_store_path)
-                # Merge: update existing, append new
-                combined = pd.concat([existing, df]).drop_duplicates(
-                    subset=['hex_id', 'datetime_30min'],
-                    keep='last'
+            if fetch_result.not_modified:
+                csv_result = self.csv_exporter.export()
+                workbook_result = self.workbook_exporter.export()
+                next_state = self._next_state(
+                    previous=state,
+                    fetch_result=fetch_result,
+                    run_id=run_id,
+                    completed_at_utc=completed_at_utc,
+                    full_scan=full_scan,
+                    watermark_after=state.get("watermark_utc"),
                 )
-                self._write_store(combined, format)
-                print(f"✓ Updated Feature Store: {len(combined)} total records")
-            except Exception:
-                # If append fails, overwrite
-                self._write_store(df, format)
-                print(f"✓ Created Feature Store: {len(df)} records")
-        else:
-            self._write_store(df, format)
-            print(f"✓ Created Feature Store: {len(df)} records")
-
-    def _write_store(self, df: pd.DataFrame, format: str):
-        """Write Feature Store to disk."""
-        if format == 'parquet':
-            df.to_parquet(self.feature_store_path, index=False)
-        else:
-            df.to_csv(self.feature_store_path, index=False)
-
-    def get_feature_summary(self) -> Dict:
-        """Get summary statistics of the Feature Store."""
-        if self.feature_store is None:
-            if self.feature_store_path.exists():
-                if self.feature_store_path.suffix == '.parquet':
-                    self.feature_store = pd.read_parquet(self.feature_store_path)
-                else:
-                    self.feature_store = pd.read_csv(self.feature_store_path)
-            else:
-                return {}
-
-        summary = {
-            'total_records': len(self.feature_store),
-            'unique_hexes': self.feature_store['hex_id'].nunique(),
-            'date_range': {
-                'start': self.feature_store['datetime_30min'].min(),
-                'end': self.feature_store['datetime_30min'].max(),
-            },
-            'factors': {}
-        }
-
-        # Factor statistics
-        for col in self.feature_store.columns:
-            if col not in ['hex_id', 'datetime_30min']:
-                non_zero = (self.feature_store[col] > 0).sum()
-                summary['factors'][col] = {
-                    'total_records': len(self.feature_store),
-                    'non_zero_records': int(non_zero),
-                    'max_value': float(self.feature_store[col].max()),
-                    'mean_value': float(self.feature_store[col].mean()),
+                state_path = self.lake.write_source_state(self.source_name, next_state)
+                manifest_path = self.lake.write_manifest(
+                    run_id,
+                    self.source_name,
+                    run_started_at_utc,
+                    {
+                        "status": "no_change",
+                        "completed_at_utc": completed_at_utc,
+                        "full_scan": full_scan,
+                        "watermark_used": fetch_result.watermark_used,
+                        "watermark_after": state.get("watermark_utc"),
+                        "counts": {
+                            "fetched": 0,
+                            "valid": 0,
+                            "rejected": 0,
+                            "new": 0,
+                            "updated": 0,
+                            "unchanged": 0,
+                        },
+                        "http_statuses": fetch_result.http_statuses,
+                        "artifacts": {
+                            "state": state_path,
+                            "events_csv": csv_result["path"],
+                            "events_workbook": workbook_result["path"],
+                        },
+                        "csv_records": csv_result["records"],
+                        "csv_excluded_out_of_date_window": csv_result[
+                            "excluded_out_of_date_window"
+                        ],
+                        "workbook_sheets": workbook_result["sheets"],
+                    },
+                )
+                return {
+                    "run_id": run_id,
+                    "source": self.source_name,
+                    "status": "no_change",
+                    "manifest_path": manifest_path,
+                    "csv_path": csv_result["path"],
+                    "csv_records": csv_result["records"],
+                    "workbook_path": workbook_result["path"],
+                    "workbook_sheets": workbook_result["sheets"],
                 }
 
-        return summary
+            raw_path, raw_snapshot_sha256 = self.lake.write_raw(run_id, fetch_result)
+            valid_records: list[dict[str, Any]] = []
+            rejected_records: list[dict[str, Any]] = []
+            ingested_at_utc = completed_at_utc
 
+            for raw_record in fetch_result.fetched_records:
+                try:
+                    draft = self.source.normalize(raw_record)
+                    draft = self.attendance_estimator.enrich(draft)
+                    valid_records.append(draft.to_record(run_id, ingested_at_utc))
+                except ValueError as error:
+                    rejected_records.append(
+                        {
+                            "source": self.source_name,
+                            "run_id": run_id,
+                            "rejected_at_utc": ingested_at_utc,
+                            "reason": str(error),
+                            "raw_record": dict(raw_record),
+                        }
+                    )
 
-def run_pipeline():
-    """CLI entry point for running the pipeline."""
-    import argparse
+            staging_path = self.lake.write_staging(
+                self.source_name,
+                run_id,
+                ingested_at_utc,
+                valid_records,
+            )
+            quarantine_path = self.lake.write_quarantine(
+                self.source_name,
+                run_id,
+                ingested_at_utc,
+                rejected_records,
+            )
+            merge_result = self.lake.merge_current(
+                self.source_name,
+                run_id,
+                ingested_at_utc,
+                valid_records,
+            )
+            csv_result = self.csv_exporter.export()
+            workbook_result = self.workbook_exporter.export()
+            watermark_after = self._maximum_seen_watermark(
+                fetch_result.fetched_records, state.get("watermark_utc")
+            )
+            next_state = self._next_state(
+                previous=state,
+                fetch_result=fetch_result,
+                run_id=run_id,
+                completed_at_utc=completed_at_utc,
+                full_scan=full_scan,
+                watermark_after=watermark_after,
+            )
+            state_path = self.lake.write_source_state(self.source_name, next_state)
+            manifest_path = self.lake.write_manifest(
+                run_id,
+                self.source_name,
+                run_started_at_utc,
+                {
+                    "status": "success",
+                    "completed_at_utc": completed_at_utc,
+                    "full_scan": full_scan,
+                    "watermark_used": fetch_result.watermark_used,
+                    "watermark_after": watermark_after,
+                    "http_statuses": fetch_result.http_statuses,
+                    "counts": {
+                        "fetched": len(fetch_result.fetched_records),
+                        "valid": len(valid_records),
+                        "rejected": len(rejected_records),
+                        "new": merge_result["new"],
+                        "updated": merge_result["updated"],
+                        "unchanged": merge_result["unchanged"],
+                    },
+                    "artifacts": {
+                        "raw": raw_path,
+                        "raw_snapshot_sha256": raw_snapshot_sha256,
+                        "staging": staging_path,
+                        "quarantine": quarantine_path,
+                        "current": merge_result["current_path"],
+                        "versions": merge_result["versions_path"],
+                        "state": state_path,
+                        "events_csv": csv_result["path"],
+                        "events_workbook": workbook_result["path"],
+                    },
+                    "csv_records": csv_result["records"],
+                    "csv_excluded_out_of_date_window": csv_result[
+                        "excluded_out_of_date_window"
+                    ],
+                    "workbook_sheets": workbook_result["sheets"],
+                },
+            )
+            return {
+                "run_id": run_id,
+                "source": self.source_name,
+                "status": "success",
+                "full_scan": full_scan,
+                "fetched": len(fetch_result.fetched_records),
+                "valid": len(valid_records),
+                "rejected": len(rejected_records),
+                "new": merge_result["new"],
+                "updated": merge_result["updated"],
+                "unchanged": merge_result["unchanged"],
+                "manifest_path": manifest_path,
+                "csv_path": csv_result["path"],
+                "csv_records": csv_result["records"],
+                "workbook_path": workbook_result["path"],
+                "workbook_sheets": workbook_result["sheets"],
+            }
+        except Exception as error:
+            LOGGER.exception("Event ingestion failed for source %s.", self.source_name)
+            try:
+                self.lake.write_manifest(
+                    run_id,
+                    self.source_name,
+                    run_started_at_utc,
+                    {
+                        "status": "failed",
+                        "completed_at_utc": to_utc_iso(utc_now()),
+                        "full_scan": full_scan,
+                        "error_type": type(error).__name__,
+                        "error": str(error),
+                    },
+                )
+            except Exception:
+                LOGGER.exception(
+                    "Could not write failure manifest for source %s.", self.source_name
+                )
+            raise
 
-    parser = argparse.ArgumentParser(description='Run Factor Pipeline')
-    parser.add_argument(
-        '--config',
-        default='config/factors.yaml',
-        help='Path to factors.yaml'
-    )
-    parser.add_argument(
-        '--output',
-        default='data/feature_store.csv',
-        help='Path to output Feature Store'
-    )
-    parser.add_argument(
-        '--plugin',
-        help='Run specific plugin only'
-    )
+    def _should_run_full_scan(self, state: Mapping[str, Any]) -> bool:
+        if not state.get("watermark_utc"):
+            return True
+        successful_runs = self._non_negative_int(state.get("successful_runs", 0))
+        return successful_runs % self.full_scan_every_runs == 0
 
-    args = parser.parse_args()
+    def _next_state(
+        self,
+        previous: Mapping[str, Any],
+        fetch_result: Any,
+        run_id: str,
+        completed_at_utc: str,
+        full_scan: bool,
+        watermark_after: str | None,
+    ) -> dict[str, Any]:
+        successful_runs = self._non_negative_int(previous.get("successful_runs", 0)) + 1
+        source_state_updates = getattr(fetch_result, "state_updates", {})
+        if not isinstance(source_state_updates, Mapping):
+            raise ValueError("Event source state updates must be a mapping.")
+        next_state = {
+            **dict(previous),
+            **dict(source_state_updates),
+            "source": self.source_name,
+            "watermark_utc": watermark_after,
+            "successful_runs": successful_runs,
+            "last_successful_run_id": run_id,
+            "last_success_at_utc": completed_at_utc,
+        }
+        etag = self._header(fetch_result.response_headers, "ETag")
+        last_modified = self._header(fetch_result.response_headers, "Last-Modified")
+        if etag:
+            next_state["etag"] = etag
+        if last_modified:
+            next_state["last_modified"] = last_modified
+        if full_scan:
+            next_state["last_full_scan_at_utc"] = completed_at_utc
+        return next_state
 
-    orchestrator = PipelineOrchestrator(
-        config_path=args.config,
-        feature_store_path=args.output
-    )
+    @staticmethod
+    def _maximum_seen_watermark(
+        raw_records: list[dict[str, Any]],
+        existing_watermark: Any,
+    ) -> str | None:
+        candidates: list[str] = []
+        if existing_watermark:
+            try:
+                parsed_existing = parse_datetime_utc(
+                    existing_watermark, "state.watermark_utc"
+                )
+                if parsed_existing:
+                    candidates.append(parsed_existing)
+            except ValueError:
+                pass
+        for record in raw_records:
+            try:
+                timestamp = parse_datetime_utc(record.get("updatedAt"), "updatedAt")
+            except ValueError:
+                continue
+            if timestamp:
+                candidates.append(timestamp)
+        return max(candidates) if candidates else None
 
-    if args.plugin:
-        df = orchestrator.run_plugin(args.plugin)
-    else:
-        df = orchestrator.run_all_plugins()
+    @staticmethod
+    def _mapping(value: Any, label: str) -> dict[str, Any]:
+        if not isinstance(value, Mapping):
+            raise ValueError(f"Config section '{label}' must be a mapping.")
+        return dict(value)
 
-    print("\n" + "="*60)
-    print("PIPELINE COMPLETE")
-    print("="*60)
-    print(f"Total records: {len(df)}")
-    print(f"Output: {args.output}")
+    @staticmethod
+    def _positive_int(value: Any, label: str) -> int:
+        parsed = EventIngestionJob._non_negative_int(value)
+        if parsed < 1:
+            raise ValueError(f"Config value '{label}' must be at least 1.")
+        return parsed
 
-    return df
+    @staticmethod
+    def _non_negative_int(value: Any) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Expected a non-negative integer.") from error
+        if parsed < 0:
+            raise ValueError("Expected a non-negative integer.")
+        return parsed
 
+    @staticmethod
+    def _header(headers: Mapping[str, str], name: str) -> str | None:
+        name_lower = name.lower()
+        for key, value in headers.items():
+            if key.lower() == name_lower:
+                return value
+        return None
 
-if __name__ == '__main__':
-    run_pipeline()
+    @staticmethod
+    def _run_id(started_at_utc: str) -> str:
+        timestamp = datetime.fromisoformat(started_at_utc.replace("Z", "+00:00"))
+        return f"{timestamp.strftime('%Y%m%dT%H%M%SZ')}_{uuid.uuid4().hex[:10]}"

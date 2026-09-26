@@ -1,103 +1,204 @@
-# ============================================================
-# FACTORS CONFIGURATION
-# ======================
-#
-# This file configures all factor plugins for the pipeline.
-# Adding a new factor = Add a new plugin file + Add config here
-#
-# ============================================================
+pipeline:
+  city: hanoi
+  timezone: Asia/Ho_Chi_Minh
+  data_dir: data
 
-factors:
-  # ============================================================
-  # WEATHER
-  # Source: Open-Meteo API (FREE, no API key required)
-  # Schedule: Every hour
-  # ============================================================
-  - name: weather
-    type: api
-    source: open_meteo
-    schedule: "0 * * * *"
-    enabled: true
-    config:
-      # Hanoi coordinates
-      latitude: 21.0285
-      longitude: 105.8542
-      radius_km: 30
-      timezone: "Asia/Ho_Chi_Minh"
-      forecast_days: 7
-      past_days: 0  # Set > 0 for backfill (e.g., 60 for 60 days)
-
-  # ============================================================
-  # FLOOD
-  # Source: VNExpress RSS (FREE)
-  # Schedule: Every 15 minutes
-  # ============================================================
-  - name: flood
-    type: rss
-    source: vnexpress_rss
-    schedule: "*/15 * * * *"
-    enabled: true
-    config:
-      rss_sources:
-        - "https://vnexpress.net/rss/thoi-su.rss"
-      max_entries: 50
-      max_age_hours: 24
-      geocoding_api: nominatim
-      # Hanoi coordinates (for default coverage)
-      latitude: 21.0285
-      longitude: 105.8542
-
-  # ============================================================
-  # EVENTS
-  # Source: Manual CSV (or Ticketbox API if available)
-  # Schedule: Daily at 23:00
-  # ============================================================
-  - name: event
-    type: csv
-    source: manual
-    schedule: "0 23 * * *"
-    enabled: true
-    config:
-      csv_path: "data/events.csv"
-      impact_radius: 3  # Number of hexes around venue
-      venue_coords:
-        # Stadiums
-        svd_my_dinh: [21.0285, 105.8195]
-        thong_nhat: [10.7795, 106.7312]
-        # Concert venues
-        arena: [21.0065, 105.8195]
-        # Exhibition centers
-        ice: [21.0150, 105.7850]
-
-  # ============================================================
-  # HOLIDAYS
-  # Source: Static calendar (Vietnam holidays)
-  # Schedule: Load at start of year + on-demand
-  # ============================================================
-  - name: holiday
-    type: file
-    source: static
-    schedule: "0 0 1 1 *"
-    enabled: true
-    config:
-      holiday_file: "data/holidays.csv"
-      tet_date: "2025-01-29"  # Tet 2025
-      impact_radius: 50  # Whole city
-
-# ============================================================
-# BACKFILL SETTINGS
-# ==================
-# For Phase 0 (Training), set past_days > 0 to fetch
-# historical data from Open-Meteo API.
-# ============================================================
-
-backfill:
-  weather:
-    past_days: 60  # Fetch 60 days of historical weather data
-  flood:
-    use_wayback_machine: true
-    max_archive_days: 90
-  events:
-    manual_collection: true  # Manual CSV collection
-  holidays:
-    include_tet_phases: true
+events:
+  csv_output_file: event.csv
+  workbook_output_file: event.xlsx
+  sheet_classification:
+    football:
+      type_values: [football]
+      keywords: []
+    concert:
+      type_values: [concert, music_concert]
+      keywords:
+        - concert
+        - live show
+        - liveshow
+        - âm nhạc
+        - music
+        - sơn tùng
+        - hòa minzy
+        - anh trai say hi
+        - âm thanh vượt đại dương
+    festival:
+      type_values: [festival, festival_public]
+      keywords: [lễ hội, festival, ngày hội, hội xuân]
+    exhibition:
+      type_values: [exhibition]
+      keywords: [triển lãm, trưng bày, exhibition]
+    other:
+      type_values: []
+      keywords: []
+  event_date_window:
+    start_date: "2026-04-13"
+    end_date: "2026-09-23"
+  attendance_estimation:
+    fill_missing_with_heuristic: false
+    # These are observed figures reported after the fixtures took place, not estimates.
+    # The event's source_url remains the VFF fixture notice; this URL records attendance evidence.
+    reported_attendance_overrides:
+      - source: vff_football
+        title: "Việt Nam vs Singapore"
+        start_at_utc: "2026-07-31T13:00:00Z"
+        attendance: 31569
+        source_url: "https://vnexpress.net/viet-nam-dong-khan-gia-nhat-vong-bang-asean-cup-2026-5107780.html"
+      - source: vff_football
+        title: "Việt Nam vs Campuchia"
+        start_at_utc: "2026-08-07T13:00:00Z"
+        attendance: 19628
+        source_url: "https://vnexpress.net/viet-nam-dong-khan-gia-nhat-vong-bang-asean-cup-2026-5107780.html"
+      - source: vff_football
+        title: "Việt Nam vs Malaysia"
+        start_at_utc: "2026-08-19T13:00:00Z"
+        attendance: 37906
+        source_url: "https://vov.vn/the-thao/san-my-dinh-lap-ky-luc-ve-so-luong-khan-gia-o-asean-cup-2026-post1325665.vov"
+      - source: vff_football
+        title: "Việt Nam vs Thái Lan"
+        start_at_utc: "2026-08-26T13:00:00Z"
+        attendance: 40000
+        source_url: "https://tuoitre.vn/cdv-mo-hoi-truoc-san-my-dinh-cho-viet-nam-dau-thai-lan-100260826160335574.htm"
+      # These values are attendance figures reported by the linked articles.
+      # Approximate wording (khoảng/gần) is retained in the source evidence;
+      # no capacity-only or sold-out-only concert receives an attendance value.
+      - source: ticketbox_concert
+        title: "PHAO CỨU SINH CONCERT - HƯƠNG TRÀM"
+        start_at_utc: "2026-08-01T13:00:00Z"
+        attendance: 10000
+        source_url: "https://vnexpress.net/phao-cuu-sinh-cua-huong-tram-5104230.html"
+      - source: ticketbox_concert
+        title: "'GIỮA MỘT VẠN TOUR' - PHÙNG KHÁNH LINH | CHAPTER 3: LIVE EXPERIENCE IN HÀ NỘI"
+        start_at_utc: "2026-08-08T12:00:00Z"
+        attendance: 4000
+        source_url: "https://dantri.com.vn/giai-tri/phung-khanh-linh-tung-hoai-nghi-ban-than-den-tuoi-32-khong-con-co-don-20260809110450885.htm"
+      - source: ticketbox_concert
+        title: "CARROT DAY 2026"
+        start_at_utc: "2026-08-15T02:00:00Z"
+        attendance: 2000
+        source_url: "https://thethaovanhoa.vn/print-20260816152123824.htm"
+      - source: ticketbox_concert
+        title: "LEGACY OF LOVE - 10 năm tưởng nhớ nhạc sĩ Thanh Tùng"
+        start_at_utc: "2026-08-15T13:00:00Z"
+        attendance: 4000
+        source_url: "https://thethaovanhoa.vn/legacy-of-love-dieu-truong-sang-trong-trong-di-san-thanh-tung-20260816113028205.htm"
+      - source: ticketbox_concert
+        title: "BỐC FEST"
+        start_at_utc: "2026-09-19T10:00:00Z"
+        attendance: 5000
+        source_url: "https://vov.vn/van-hoa/am-nhac/hang-ngan-khan-gia-chay-cung-boc-fest-2026-tai-nha-may-xe-lua-gia-lam-post1334249.vov"
+      # Only stated numeric participation figures are retained for festivals.
+      - source: lehoivietnam_hanoi
+        title: "Chương trình nghệ thuật Âm vang Tổ quốc 2026"
+        start_at_utc: "2026-04-27T17:00:00Z"
+        attendance: 40000
+        source_url: "https://nhandan.vn/an-tuong-chuong-trinh-nghe-thuat-dac-biet-am-vang-to-quoc-post959036.html"
+      - source: lehoivietnam_hanoi
+        title: "LCK Roadshow 2026"
+        start_at_utc: "2026-05-07T17:00:00Z"
+        attendance: 40000
+        source_url: "https://tdtt.gov.vn/diem-bao/id/94521/diem-tin-hoat-dong-tdtt-ngay-08-05-2026"
+  sources:
+    van_mieu:
+      enabled: true
+      endpoint: https://vanmieu.gov.vn/api/events
+      listing_url: https://vanmieu.gov.vn/vi/events/cultural-events
+      resolve_article_urls: true
+      article_listing_urls:
+        cultural: https://vanmieu.gov.vn/vi/events/cultural-events
+        workshop: https://vanmieu.gov.vn/vi/events/workshop
+        diplomatic: https://vanmieu.gov.vn/vi/events/diplomatic
+        seminar: https://vanmieu.gov.vn/vi/events/conferences
+      article_listing_max_pages: 20
+      locale: vi
+      limit: 100
+      max_pages: 20
+      timeout_seconds: 30
+      max_retries: 3
+      watermark_overlap_minutes: 10
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    vpf_football:
+      enabled: true
+      calendars:
+        v_league_1_2025_26: https://vpf.vn/season/v-league-2026/?action=calendar&pagejs=1
+        national_cup_2025_26: https://vpf.vn/season/cup-quoc-gia-2026/?action=calendar&pagejs=1
+        v_league_1_2026_27: https://vpf.vn/season/v-league-2027/?action=calendar&pagejs=1
+        v_league_2_2026_27: https://vpf.vn/season/hang-nhat-quoc-gia-2027/?action=calendar&pagejs=1
+        national_cup_2026_27: https://vpf.vn/season/cup-quoc-gia-2027/?action=calendar&pagejs=1
+      hanoi_venue_allowlist:
+        - SVD Hang Day
+        - SVD My Dinh
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 120
+      timeout_seconds: 30
+      max_retries: 3
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    vff_football:
+      enabled: true
+      listing_url: https://vff.org.vn/chuyen-muc/tin-tuc/thong-tin-ve/
+      max_listing_pages: 8
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 120
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    ticketbox_concert:
+      enabled: true
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      category: music
+      from_date: "2026-04-13"
+      to_date: "2026-09-22"
+      page_size: 100
+      max_pages: 5
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    ticketbox_festival:
+      enabled: true
+      # Ticketbox's category=festival search is empty; festival.py searches the
+      # public catalogue and verifies Hanoi/location from each detail page.
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      from_date: "2026-04-13"
+      to_date: "2026-09-22"
+      page_size: 100
+      max_pages: 5
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    lehoivietnam_hanoi:
+      enabled: true
+      listing_url: https://lehoivietnam.com.vn/vi/kham-pha?tag_key=place%3Aha-noi
+      max_pages: 20
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    official_hanoi_other:
+      enabled: true
+      # Add authoritative site listings here; no code change is needed for a new source.
+      listing_sources:
+        - name: Hanoi Department of Education and Training
+          listing_url: https://www.hanoi.edu.vn/
+          allowed_hosts: [www.hanoi.edu.vn, hanoi.edu.vn]
+          # Keep only activities likely to create shared-trip demand.
+          # Field trips and routine school administration are intentionally excluded.
+          keywords: ["khai giảng", "tựu trường", "workshop", "hội thảo", "tập huấn"]
+          excluded_title_prefixes: ["v/v", "công văn", "thông báo"]
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 180
+      timeout_seconds: 30
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
