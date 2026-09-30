@@ -571,31 +571,77 @@ class WeatherEnsembleAggregator:
         Returns:
             EnsembleResult object
         """
-        source_names = list(self.config.sources.keys())
+        # CHỈ tính weight cho các nguồn CÓ trong source_values
+        active_source_names = [s for s in source_values.keys() if source_values[s] is not None]
 
-        # Get staleness for each source
-        staleness = {
-            name: self.source_info[name].staleness_hours
-            for name in source_names
-        }
+        if not active_source_names:
+            raise ValueError("No active sources in source_values")
 
-        # Get status for each source
-        source_status = {
-            name: self.source_info[name].status
-            for name in source_names
-        }
+        # Create temporary config chỉ với các nguồn active
+        active_sources = {name: self.config.sources[name] for name in active_source_names if name in self.config.sources}
 
-        # Bước 1: Tính trọng số inverse-error
-        base_weights = self.compute_continuous_weights(variable_name, y_true, predictions)
+        # Nếu có nguồn không trong config, thêm vào
+        for name in active_source_names:
+            if name not in active_sources:
+                active_sources[name] = {'type': 'api', 'base_url': '', 'timeout_seconds': 10}
 
-        # Bước 2: Áp dụng time-decay
-        decayed_weights = self.apply_time_decay(base_weights, staleness)
+        # Lấy status cho các nguồn active
+        source_status = {}
+        for name in active_source_names:
+            if name in self.source_info:
+                source_status[name] = self.source_info[name].status
+            else:
+                source_status[name] = SourceStatus.HEALTHY
 
-        # Bước 3: Áp dụng circuit breaker
-        final_weights = self.apply_circuit_breaker(decayed_weights, source_status)
+        # Number of active sources
+        n_active = len(active_source_names)
 
-        # Bước 4: Tính ensemble output
-        ensemble_value = self.compute_ensemble_output(final_weights, source_values)
+        # Calculate weights based on MAE (inverse error weighting)
+        # Source with lower MAE gets higher weight
+        mae_values = {}
+
+        # Try to get MAE from cache
+        if variable_name in self.mae_cache:
+            for source_name in active_source_names:
+                if source_name in self.mae_cache[variable_name]:
+                    history = self.mae_cache[variable_name][source_name]
+                    if history:
+                        window = min(len(history), 100)
+                        mae_values[source_name] = np.mean(history[-window:])
+
+        if mae_values:
+            # Inverse MAE weighting: w_i = 1/MAE_i / Σ(1/MAE_j)
+            epsilon = 1e-6
+            inverse_mae = {s: 1.0 / (mae_values.get(s, epsilon) + epsilon) for s in active_source_names}
+            total_inverse_mae = sum(inverse_mae.values())
+            base_weights = {s: inverse_mae[s] / total_inverse_mae for s in active_source_names}
+        else:
+            # No MAE data -> equal weights
+            base_weights = {s: 1.0 / n_active for s in active_source_names}
+
+        # Staleness cho các nguồn active
+        staleness = {name: 0.0 for name in active_source_names}
+
+        # Áp dụng circuit breaker và normalization
+        circuit_weights = {}
+        for source_name in active_source_names:
+            status = source_status.get(source_name, SourceStatus.HEALTHY)
+            status_indicator = 0 if status == SourceStatus.FAILED else 1
+            circuit_weights[source_name] = base_weights[source_name] * status_indicator
+
+        # Normalize - TỔNG = 1.0
+        total = sum(circuit_weights.values())
+        if total == 0:
+            final_weights = {s: 1.0 / n_active for s in active_source_names}
+        else:
+            final_weights = {s: circuit_weights[s] / total for s in active_source_names}
+
+        # Tính ensemble output CHỈ với các nguồn có weight > 0
+        ensemble_value = sum(
+            final_weights[source] * source_values[source]
+            for source in active_source_names
+            if source in final_weights and source in source_values and final_weights[source] > 0
+        )
 
         return EnsembleResult(
             variable_name=variable_name,
@@ -603,11 +649,11 @@ class WeatherEnsembleAggregator:
             timestamp=datetime.now(),
             ensemble_value=ensemble_value,
             source_weights=final_weights,
-            source_values=source_values,
+            source_values={k: v for k, v in source_values.items() if k in active_source_names},
             source_status=source_status,
             source_staleness=staleness,
-            active_sources_count=sum(1 for s in source_status.values() if s == SourceStatus.HEALTHY),
-            total_sources_count=len(source_names),
+            active_sources_count=n_active,
+            total_sources_count=n_active,
         )
 
     def ensemble_classification(
