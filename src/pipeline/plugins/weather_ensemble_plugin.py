@@ -8,7 +8,7 @@ This is the MAIN plugin that integrates all 4 weather sources.
 Sources:
 1. OWM: OpenWeatherMap API (https://openweathermap.org/)
 2. VCW: Visual Crossing Weather API (https://www.visualcrossing.com/)
-3. HSDC: Hanoi Drainage Company (https://maps.hsdc.vn/) - Rainfall Ground Truth
+3. HSDC: Hanoi Drainage Company (https://thoatnuochanoi.vn/luongmua) - Rainfall Ground Truth
 4. NCHMF: National Center for Hydro-Meteorological Forecasting (https://nchmf.gov.vn/)
 
 Ensemble Methods:
