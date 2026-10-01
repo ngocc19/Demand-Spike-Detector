@@ -14,9 +14,16 @@ Tinh nang:
 - KDTree broadcast thoi tiet cho H3 Res 8
 - Adaptive Polling HSDC
 - Xoay vong API Keys VCW khi bi rate limit
-- Luu vao Parquet theo ngay
+- Luu vao Parquet theo partition (00-05, 06-11, 12-17, 18-23)
+- Mutex lock de tranh chay song song
 
 Chay 1-shot moi 15 phut (Task Scheduler/Cron goi script nay).
+
+Usage:
+    python scripts/realtime_crawler.py              # Chay tat ca cac buoc
+    python scripts/realtime_crawler.py --step a1    # Chi chay buoc A.1
+    python scripts/realtime_crawler.py --step a2    # Chi chay buoc A.2
+    python scripts/realtime_crawler.py --step all   # Chay tat ca (mac dinh)
 """
 
 import os
@@ -33,6 +40,21 @@ import requests
 import json
 from itertools import cycle
 from threading import Lock
+import argparse
+import sys
+
+# File locking - platform specific
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
+    # Windows alternative: use msvcrt
+    try:
+        import msvcrt
+        HAS_MSVCRT = True
+    except ImportError:
+        HAS_MSVCRT = False
 
 # Load .env file
 from dotenv import load_dotenv
@@ -73,9 +95,97 @@ HANOI_POLYGON = h3.LatLngPoly([
     (21.1483, 105.5563),
 ])
 
-# Duong dan output
-OUTPUT_DIR = Path("data/realtime_lake")
+# Duong dan output - use absolute path from project root
+import os
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+OUTPUT_DIR = PROJECT_ROOT / "data" / "realtime_lake"
 H3_RESOLUTION = 8
+
+# Ensure output directory exists
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# File lock path for mutex
+LOCK_FILE = OUTPUT_DIR / ".crawler.lock"
+
+
+def acquire_lock(timeout: int = 5) -> Optional[Any]:
+    """
+    Acquire exclusive lock to prevent parallel execution.
+    Returns lock file handle if successful, None if lock cannot be acquired.
+
+    Uses fcntl on Unix/Linux/Mac, msvcrt on Windows.
+    """
+    lock_path = str(LOCK_FILE)
+
+    try:
+        lock_handle = open(lock_path, 'w')
+
+        if HAS_FCNTL:
+            # Unix/Linux/Mac
+            start_time = datetime.now()
+            while True:
+                try:
+                    fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    lock_handle.write(f"{os.getpid()}\n{datetime.now().isoformat()}\n")
+                    lock_handle.flush()
+                    logger.info(f"[MUTEX] Acquired lock (fcntl): {lock_path}")
+                    return lock_handle
+                except (IOError, OSError):
+                    elapsed = (datetime.now() - start_time).total_seconds()
+                    if elapsed >= timeout:
+                        lock_handle.close()
+                        logger.error(f"[MUTEX] Cannot acquire lock after {timeout}s - another instance is running")
+                        return None
+                    import time
+                    time.sleep(0.5)
+
+        elif HAS_MSVCRT:
+            # Windows
+            start_time = datetime.now()
+            while True:
+                try:
+                    msvcrt.locking(lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    lock_handle.write(f"{os.getpid()}\n{datetime.now().isoformat()}\n")
+                    lock_handle.flush()
+                    logger.info(f"[MUTEX] Acquired lock (msvcrt): {lock_path}")
+                    return lock_handle
+                except (IOError, OSError):
+                    elapsed = (datetime.now() - start_time).total_seconds()
+                    if elapsed >= timeout:
+                        lock_handle.close()
+                        logger.error(f"[MUTEX] Cannot acquire lock after {timeout}s - another instance is running")
+                        return None
+                    import time
+                    time.sleep(0.5)
+        else:
+            # Fallback: no locking (just log warning)
+            logger.warning("[MUTEX] No file locking available on this platform")
+            lock_handle.close()
+            return None
+
+    except Exception as e:
+        logger.error(f"[MUTEX] Error acquiring lock: {e}")
+        return None
+
+
+def release_lock(lock_handle: Any):
+    """Release the exclusive lock."""
+    if lock_handle:
+        try:
+            if HAS_FCNTL:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+            elif HAS_MSVCRT:
+                try:
+                    msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+                except:
+                    pass
+            lock_handle.close()
+            # Remove lock file
+            if LOCK_FILE.exists():
+                LOCK_FILE.unlink()
+            logger.info("[MUTEX] Released lock")
+        except Exception as e:
+            logger.warning(f"[MUTEX] Error releasing lock: {e}")
 
 # Add file handler to logger
 LOG_FILE = OUTPUT_DIR / "crawler_cron.log"
@@ -346,39 +456,72 @@ def fetch_vcw_weather_realtime(lat: float, lon: float) -> Optional[Dict]:
 
     Su dung APIKeyRotator de xoay vong qua cac keys khi gap rate limit.
     Fallback sang OWM neu tat ca keys deu loi.
+
+    Retry logic:
+    - 3 retries voi delay khi gap DNS/network error
+    - Xoay key khi gap rate limit
     """
     max_retries = vcw_rotator.stats['available_keys'] if vcw_rotator.stats['available_keys'] > 0 else 1
     tried_keys = set()
+    network_retries = 0
+    max_network_retries = 3
 
-    for attempt in range(max_retries):
-        api_key = vcw_rotator.get_current_key()
+    while network_retries < max_network_retries:
+        for attempt in range(max_retries):
+            api_key = vcw_rotator.get_current_key()
 
-        if not api_key:
-            logger.warning(f"[VCW] No more API keys available")
-            break
+            if not api_key:
+                logger.warning(f"[VCW] No more API keys available")
+                break
 
-        if api_key in tried_keys:
-            vcw_rotator.get_next_key()
-            continue
+            if api_key in tried_keys:
+                vcw_rotator.get_next_key()
+                continue
 
-        tried_keys.add(api_key)
+            tried_keys.add(api_key)
 
-        try:
-            result = _fetch_vcw_single(api_key, lat, lon)
-            if result:
-                return result
-            else:
+            try:
+                result = _fetch_vcw_single(api_key, lat, lon)
+                if result:
+                    return result
+                else:
+                    vcw_rotator.get_next_key()
+
+            except Exception as e:
+                error_str = str(e).lower()
+
+                # Network errors - retry
+                if 'name resolution' in error_str or 'resolve' in error_str or \
+                   'connection' in error_str or 'timeout' in error_str or \
+                   'network' in error_str:
+                    logger.warning(f"[VCW] Network error ({api_key[:8]}...): {e}")
+                    network_retries += 1
+                    if network_retries < max_network_retries:
+                        import time
+                        delay = 2 ** network_retries  # Exponential backoff
+                        logger.info(f"[VCW] Retrying in {delay}s... (attempt {network_retries}/{max_network_retries})")
+                        time.sleep(delay)
+                    continue
+
+                # Rate limit - rotate key
+                if '429' in error_str or 'rate limit' in error_str or 'too many' in error_str:
+                    vcw_rotator.mark_rate_limited(api_key)
+                    vcw_rotator.get_next_key()
+                    continue
+
+                # Other errors - mark failed and continue
+                vcw_rotator.mark_failed(api_key)
                 vcw_rotator.get_next_key()
 
-        except Exception as e:
-            error_str = str(e).lower()
-            if '429' in error_str or 'rate limit' in error_str or 'too many' in error_str:
-                vcw_rotator.mark_rate_limited(api_key)
-            else:
-                vcw_rotator.mark_failed(api_key)
-            vcw_rotator.get_next_key()
+        # Neu da thu tat ca keys, break
+        if len(tried_keys) >= max_retries:
+            break
 
-    logger.warning(f"[VCW] All keys exhausted, will fallback to OWM")
+        # Reset tried keys for network retry
+        if network_retries < max_network_retries:
+            tried_keys = set()
+
+    logger.warning(f"[VCW] All keys exhausted after {network_retries} network retries, will fallback to OWM")
     return None
 
 
@@ -753,6 +896,7 @@ def _compute_ensemble_for_station(
         logger.info(f"  -> VCW: {temps['VCW']}C, precip={precips['VCW']}mm")
 
     # Neu chi co 1 nguon, tra ve truc tiep
+    # BLENDED_* = RAW value (single source = no blending needed)
     if len(temps) == 1:
         source_name = list(temps.keys())[0]
         data = owm_data if source_name == 'OWM' else vcw_data
@@ -782,6 +926,20 @@ def _compute_ensemble_for_station(
             'value': value,
             'severity': _get_severity(value),
             'source': source_name,
+            # BLENDED COLUMNS - Match training schema (single source = blended = raw)
+            'blended_temp_c': data.get('temp_c', 30),
+            'blended_humidity_pct': data.get('humidity_pct', 70),
+            'blended_precip': data.get('precip', 0),
+            'blended_weather_impact': data.get('weather_impact', 0),
+            # OWM RAW COLUMNS - For consistency with historical data
+            'owm_temp_c': owm_data.get('temp_c') if owm_data else None,
+            'owm_feels_like': owm_data.get('feels_like') if owm_data else None,
+            'owm_humidity_pct': owm_data.get('humidity_pct') if owm_data else None,
+            'owm_precip': owm_data.get('precip') if owm_data else 0,
+            'owm_wind_speed': owm_data.get('wind_speed') if owm_data else None,
+            'owm_cloud_cover': owm_data.get('cloud_cover') if owm_data else None,
+            'owm_weather_code': owm_data.get('weather_code') if owm_data else None,
+            'owm_weather_impact': owm_data.get('weather_impact') if owm_data else 0,
         }
 
     # Ensemble cho tat ca features
@@ -823,6 +981,20 @@ def _compute_ensemble_for_station(
         'value': round(ensemble_value, 2),
         'severity': _get_severity(ensemble_value),
         'source': 'ENSEMBLE',
+        # BLENDED COLUMNS - Match training schema (ensemble values)
+        'blended_temp_c': round(temp_result.ensemble_value, 2),
+        'blended_humidity_pct': round(humid_result.ensemble_value, 2),
+        'blended_precip': round(precip_result.ensemble_value, 2),
+        'blended_weather_impact': round(impact_result.ensemble_value, 2),
+        # OWM RAW COLUMNS - For consistency with historical data
+        'owm_temp_c': owm_data.get('temp_c') if owm_data else None,
+        'owm_feels_like': owm_data.get('feels_like') if owm_data else None,
+        'owm_humidity_pct': owm_data.get('humidity_pct') if owm_data else None,
+        'owm_precip': owm_data.get('precip') if owm_data else 0,
+        'owm_wind_speed': owm_data.get('wind_speed') if owm_data else None,
+        'owm_cloud_cover': owm_data.get('cloud_cover') if owm_data else None,
+        'owm_weather_code': owm_data.get('weather_code') if owm_data else None,
+        'owm_weather_impact': owm_data.get('weather_impact') if owm_data else 0,
     }
 
 
@@ -850,6 +1022,20 @@ def _create_fallback_weather(name: str) -> Dict:
         'value': 0,
         'severity': 'LOW',
         'source': 'FALLBACK',
+        # BLENDED COLUMNS - Fallback values (no real data)
+        'blended_temp_c': 30,
+        'blended_humidity_pct': 70,
+        'blended_precip': 0,
+        'blended_weather_impact': 0,
+        # OWM RAW COLUMNS - Fallback values
+        'owm_temp_c': None,
+        'owm_feels_like': None,
+        'owm_humidity_pct': None,
+        'owm_precip': 0,
+        'owm_wind_speed': None,
+        'owm_cloud_cover': None,
+        'owm_weather_code': None,
+        'owm_weather_impact': 0,
     }
 
 
@@ -908,6 +1094,20 @@ def step_a4_broadcast_weather_kdtree(
             'precip_impact': weather['precip_impact'],
             'value': weather['value'],
             'severity': weather['severity'],
+            # BLENDED COLUMNS - Match training schema
+            'blended_temp_c': weather.get('blended_temp_c', weather['temp_c']),
+            'blended_humidity_pct': weather.get('blended_humidity_pct', weather['humidity_pct']),
+            'blended_precip': weather.get('blended_precip', weather['precip']),
+            'blended_weather_impact': weather.get('blended_weather_impact', weather['weather_impact']),
+            # OWM RAW COLUMNS - For consistency with historical data
+            'owm_temp_c': weather.get('owm_temp_c'),
+            'owm_feels_like': weather.get('owm_feels_like'),
+            'owm_humidity_pct': weather.get('owm_humidity_pct'),
+            'owm_precip': weather.get('owm_precip', 0),
+            'owm_wind_speed': weather.get('owm_wind_speed'),
+            'owm_cloud_cover': weather.get('owm_cloud_cover'),
+            'owm_weather_code': weather.get('owm_weather_code'),
+            'owm_weather_impact': weather.get('owm_weather_impact', 0),
         }
         records.append(record)
 
@@ -1034,32 +1234,79 @@ def step_c_add_metadata(df: pd.DataFrame, storm_warning: int) -> pd.DataFrame:
     return df
 
 
-def step_d_save_parquet(df: pd.DataFrame) -> Path:
-    """BUOC D: Luu DataFrame vao Parquet."""
+def _get_time_partition() -> str:
+    """
+    Lay partition key theo gio trong ngay.
+    Chia nho 4 lan/ngan (00, 06, 12, 18) de tranh file >50MB.
+    """
+    hour = datetime.now().hour
+    if hour < 6:
+        return "00_05"
+    elif hour < 12:
+        return "06_11"
+    elif hour < 18:
+        return "12_17"
+    else:
+        return "18_23"
+
+
+def step_d_save_parquet(df: pd.DataFrame) -> List[Path]:
+    """BUOC D: Luu DataFrame vao Parquet (chia theo thoi gian trong ngay)."""
     logger.info("\n" + "="*60)
-    logger.info("BUOC D: Luu vao Parquet")
+    logger.info("BUOC D: Luu vao Parquet (partitioned by time-of-day)")
     logger.info("="*60)
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    output_file = OUTPUT_DIR / f"weather_{date_str}.parquet"
 
     # Ensure consistent types
     if 'weather_code' in df.columns:
         df['weather_code'] = df['weather_code'].astype(str)
 
-    numeric_cols = ['temp_c', 'feels_like', 'humidity_pct', 'precip', 'precip_prob',
-                    'wind_speed', 'pressure', 'cloud_cover', 'visibility', 'uv_index',
-                    'weather_impact', 'precip_impact', 'value']
+    numeric_cols = [
+        # Core weather features
+        'temp_c', 'feels_like', 'humidity_pct', 'precip', 'precip_prob',
+        'wind_speed', 'pressure', 'cloud_cover', 'visibility', 'uv_index',
+        'weather_impact', 'precip_impact', 'value',
+        # BLENDED COLUMNS - Match training schema (Train-Serving Skew fix)
+        'blended_temp_c', 'blended_humidity_pct', 'blended_precip', 'blended_weather_impact',
+        # OWM RAW COLUMNS - For consistency with historical data
+        'owm_temp_c', 'owm_feels_like', 'owm_humidity_pct', 'owm_precip',
+        'owm_wind_speed', 'owm_cloud_cover', 'owm_weather_impact',
+        # Spatial features
+        'lat', 'lon', 'distance_to_anchor_km',
+        # Other numeric
+        'is_flooded', 'storm_warning', 'day_of_week', 'is_weekend',
+    ]
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
+    # Lay partition hien tai
+    time_partition = _get_time_partition()
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    output_file = OUTPUT_DIR / f"weather_{date_str}_{time_partition}.parquet"
+
+    # Kiem tra so luong record hien tai trong partition
+    # Moi crawl tao ra ~1,960 records (1 record/hex x 1960 hexes)
+    # Moi partition co 6 tieng (24/4 = 6h)
+    # So crawl toi da trong 6h = 24 (moi 15 phut)
+    # 24 crawls x 1,960 records = 47,040 records/partition
+    # File 47K records ≈ ~2 MB, van duoi 50MB
+    # Dat max = 50,000 de backfill data khong bi split
+    max_records_per_partition = 50000  # ~2MB/file, duoi 50MB limit
+
     if output_file.exists():
         existing_df = pd.read_parquet(output_file)
-        combined_df = pd.concat([existing_df, df], ignore_index=True)
-        logger.info(f"  -> Appended {len(df)} to existing {len(existing_df)}")
+        existing_count = len(existing_df)
+
+        # Neu da co max records trong partition nay, luu vao file tiep theo
+        if existing_count >= max_records_per_partition:
+            # Dat ten file voi timestamp cu the
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M")
+            output_file = OUTPUT_DIR / f"weather_{date_str}_{time_partition}_{timestamp_str}.parquet"
+            combined_df = df  # <-- FIX: must assign combined_df for new file
+            logger.warning(f"  -> Partition full ({existing_count} records), using timestamped file: {output_file.name}")
+        else:
+            combined_df = pd.concat([existing_df, df], ignore_index=True)
+            logger.info(f"  -> Appended {len(df)} to existing {existing_count} records")
     else:
         combined_df = df
         logger.info(f"  -> Created new file with {len(df)} records")
@@ -1067,61 +1314,190 @@ def step_d_save_parquet(df: pd.DataFrame) -> Path:
     combined_df.to_parquet(output_file, index=False)
     logger.info(f"  -> Saved to: {output_file}")
 
-    return output_file
+    # Tinh toan kich thuoc file
+    file_size_mb = output_file.stat().st_size / (1024 * 1024)
+    logger.info(f"  -> File size: {file_size_mb:.2f} MB")
+
+    if file_size_mb > 45:
+        logger.warning(f"  -> WARNING: File approaching 50MB limit! Consider archiving older data.")
+
+    return [output_file]
 
 
 # =============================================================================
 # PHAN 7: MAIN FUNCTION
 # =============================================================================
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Realtime Weather Crawler for Hanoi Demand Spike Detection',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python realtime_crawler.py                    # Run all steps
+  python realtime_crawler.py --step a1           # Only storm warning
+  python realtime_crawler.py --step a2           # Only generate hexes
+  python realtime_crawler.py --step a3           # Only fetch weather
+  python realtime_crawler.py --step a4           # Only broadcast
+  python realtime_crawler.py --step b            # Only flood check
+  python realtime_crawler.py --step c            # Only add metadata
+  python realtime_crawler.py --step d            # Only save parquet
+  python realtime_crawler.py --no-lock           # Skip mutex lock (for debugging)
+        """
+    )
+    parser.add_argument(
+        '--step', '-s',
+        type=str,
+        default='all',
+        choices=['all', 'a1', 'a2', 'a3', 'a4', 'b', 'c', 'd'],
+        help='Which step to run (default: all)'
+    )
+    parser.add_argument(
+        '--no-lock',
+        action='store_true',
+        help='Skip mutex lock check (for debugging parallel runs)'
+    )
+    parser.add_argument(
+        '--lock-timeout',
+        type=int,
+        default=5,
+        help='Lock timeout in seconds (default: 5)'
+    )
+    return parser.parse_args()
+
+
+def run_step(step_name: str, config: dict):
+    """
+    Run a specific step or all steps.
+
+    Args:
+        step_name: 'all', 'a1', 'a2', 'a3', 'a4', 'b', 'c', 'd'
+        config: dict containing step results/inputs
+    """
+    if step_name in ['all', 'a1']:
+        has_storm, storm_warning = step_a1_storm_warning()
+        config['storm_warning'] = storm_warning
+        config['has_storm'] = has_storm
+        logger.info(f"[STEP A.1] Completed: has_storm={has_storm}, storm_warning={storm_warning}")
+
+    if step_name in ['all', 'a2']:
+        hex_ids = step_a2_generate_h3_hexes()
+        config['hex_ids'] = hex_ids
+        logger.info(f"[STEP A.2] Completed: {len(hex_ids)} hexes")
+
+    if step_name in ['all', 'a3']:
+        # Initialize aggregator if needed (lazy initialization)
+        if config.get('aggregator') is None:
+            config['aggregator'] = WeatherEnsembleAggregator(EnsembleConfig())
+        anchor_coords, weather_stations = step_a3_fetch_anchor_weather_ensemble(config['aggregator'])
+        config['anchor_coords'] = anchor_coords
+        config['weather_stations'] = weather_stations
+        logger.info(f"[STEP A.3] Completed: {len(weather_stations)} stations")
+
+    if step_name in ['all', 'a4']:
+        if 'hex_ids' not in config or 'anchor_coords' not in config or 'weather_stations' not in config:
+            logger.error("[STEP A.4] Missing required data from previous steps (run with --step all or --step a2,a3 first)")
+            return None
+        df = step_a4_broadcast_weather_kdtree(config['hex_ids'], config['anchor_coords'], config['weather_stations'])
+        config['df'] = df
+        logger.info(f"[STEP A.4] Completed: {len(df)} rows")
+
+    if step_name in ['all', 'b']:
+        if 'df' not in config:
+            logger.error("[STEP B] Missing dataframe from previous steps")
+            return None
+        has_storm = config.get('has_storm', False)
+        df = step_b_adaptive_flood_check(config['df'], has_storm)
+        config['df'] = df
+        logger.info(f"[STEP B] Completed: {len(df)} rows")
+
+    if step_name in ['all', 'c']:
+        if 'df' not in config:
+            logger.error("[STEP C] Missing dataframe from previous steps")
+            return None
+        storm_warning = config.get('storm_warning', 0)
+        df = step_c_add_metadata(config['df'], storm_warning)
+        config['df'] = df
+        logger.info(f"[STEP C] Completed: {len(df)} rows")
+
+    if step_name in ['all', 'd']:
+        if 'df' not in config:
+            logger.error("[STEP D] Missing dataframe from previous steps")
+            return None
+        output_paths = step_d_save_parquet(config['df'])
+        config['output_paths'] = output_paths
+        logger.info(f"[STEP D] Completed: {output_paths}")
+
+    return config
+
+
 def main():
     """Main entry point."""
+    args = parse_args()
+
     logger.info("\n" + "="*70)
-    logger.info("REALTIME CRAWLER - PRODUCTION VERSION (Multi-API Key)")
+    logger.info("REALTIME CRAWLER - PRODUCTION VERSION")
     logger.info(f"Thoi gian: {datetime.now().isoformat()}")
+    logger.info(f"Step: {args.step}")
     logger.info("="*70)
 
-    # Kiem tra API keys
-    if not OWM_API_KEY:
-        logger.warning("OPENWEATHERMAP_API_KEY khong ton tai trong .env")
-
-    vcw_stats = vcw_rotator.get_stats()
-    logger.info(f"VCW API Keys: {vcw_stats['active']}/{vcw_stats['total']} available")
+    # Acquire mutex lock (unless --no-lock is specified)
+    lock_handle = None
+    if not args.no_lock:
+        lock_handle = acquire_lock(timeout=args.lock_timeout)
+        if not lock_handle:
+            logger.error("Another instance is already running. Exiting.")
+            return 1
 
     try:
-        config = EnsembleConfig()
-        aggregator = WeatherEnsembleAggregator(config)
+        # Kiem tra API keys
+        if not OWM_API_KEY:
+            logger.warning("OPENWEATHERMAP_API_KEY khong ton tai trong .env")
 
-        has_storm, storm_warning = step_a1_storm_warning()
-        hex_ids = step_a2_generate_h3_hexes()
-        anchor_coords, weather_stations = step_a3_fetch_anchor_weather_ensemble(aggregator)
-        df = step_a4_broadcast_weather_kdtree(hex_ids, anchor_coords, weather_stations)
-        df = step_b_adaptive_flood_check(df, has_storm)
-        df = step_c_add_metadata(df, storm_warning)
-        output_path = step_d_save_parquet(df)
+        vcw_stats = vcw_rotator.get_stats()
+        logger.info(f"VCW API Keys: {vcw_stats['active']}/{vcw_stats['total']} available")
+
+        # Initialize config for step data passing
+        config = {
+            'aggregator': None,
+        }
+
+        # Run steps
+        result = run_step(args.step, config)
+
+        if result is None:
+            logger.error("Step execution failed")
+            return 1
 
         logger.info("\n" + "="*70)
         logger.info("REALTIME CRAWLER - HOAN THANH")
         logger.info("="*70)
 
         # Final stats
-        final_vcw_stats = vcw_rotator.get_stats()
+        if 'df' in config:
+            final_vcw_stats = vcw_rotator.get_stats()
 
-        summary = {
-            "total_hexes": len(df),
-            "flooded_hexes": int(df["is_flooded"].sum()),
-            "storm_warning": storm_warning,
-            "output_file": str(output_path),
-            "crawled_at": df["crawled_at"].iloc[0].isoformat(),
-            "vcw_keys_used": f"{final_vcw_stats['rate_limited']} rate-limited, {final_vcw_stats['failed']} failed",
-        }
-        logger.info(f"Summary: {summary}")
+            summary = {
+                "total_hexes": len(config['df']),
+                "flooded_hexes": int(config['df']["is_flooded"].sum()),
+                "storm_warning": config.get('storm_warning', 0),
+                "output_files": [str(p) for p in config.get('output_paths', [])],
+                "crawled_at": config['df']["crawled_at"].iloc[0].isoformat(),
+                "vcw_keys_used": f"{final_vcw_stats['rate_limited']} rate-limited, {final_vcw_stats['failed']} failed",
+            }
+            logger.info(f"Summary: {summary}")
 
         return 0
 
     except Exception as e:
         logger.error(f"LOI: {e}", exc_info=True)
         return 1
+
+    finally:
+        # Always release lock
+        if lock_handle:
+            release_lock(lock_handle)
 
 
 if __name__ == "__main__":
