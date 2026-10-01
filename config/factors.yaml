@@ -32,31 +32,10 @@ events:
       type_values: []
       keywords: []
   event_date_window:
-    start_date: "2026-06-29"
-    end_date: "2026-09-28"
+    start_date: "2026-04-13"
+    end_date: "2026-09-23"
   attendance_estimation:
     fill_missing_with_heuristic: false
-    # Venue capacities with spatial coordinates (lat/lng in decimal degrees, WGS84).
-    # h3_index is at resolution 8 (~460m edge). Missing venues remain unresolved.
-    venue_capacities:
-      "Sân vận động Quốc gia Mỹ Đình":
-        capacity: 40000
-        aliases:
-          - "My Dinh National Stadium"
-          - "SVD My Dinh"
-          - "SVD Mỹ Đình"
-        lat: 21.0285
-        lng: 105.7592
-        h3_index: "8a3a10720ffffff"
-      "Sân vận động Hàng Đẫy":
-        capacity: 22700
-        aliases:
-          - "Hang Day Stadium"
-          - "SVD Hang Day"
-          - "SVD Hàng Đẫy"
-        lat: 21.0405
-        lng: 105.7828
-        h3_index: "8a3a1000bfffff"
     # These are observed figures reported after the fixtures took place, not estimates.
     # The event's source_url remains the VFF fixture notice; this URL records attendance evidence.
     reported_attendance_overrides:
@@ -169,10 +148,11 @@ events:
       user_agent: DemandSpikeDetector/0.1
       scope_city: hanoi
     ticketbox_concert:
-      enabled: false  # Disabled: use ticketbox_all instead to avoid duplicates
+      enabled: true
       search_url: https://api-v2.ticketbox.vn/search/v2/events
       category: music
-      # Date range is read from events.event_date_window
+      from_date: "2026-04-13"
+      to_date: "2026-09-22"
       page_size: 100
       max_pages: 5
       timezone: Asia/Ho_Chi_Minh
@@ -182,11 +162,12 @@ events:
       user_agent: DemandSpikeDetector/0.1
       scope_city: hanoi
     ticketbox_festival:
-      enabled: false  # Disabled: use ticketbox_all instead to avoid duplicates
+      enabled: true
       # Ticketbox's category=festival search is empty; festival.py searches the
       # public catalogue and verifies Hanoi/location from each detail page.
       search_url: https://api-v2.ticketbox.vn/search/v2/events
-      # Date range is read from events.event_date_window
+      from_date: "2026-04-13"
+      to_date: "2026-09-22"
       page_size: 100
       max_pages: 5
       timezone: Asia/Ho_Chi_Minh
@@ -218,43 +199,6 @@ events:
       timezone: Asia/Ho_Chi_Minh
       default_duration_minutes: 180
       timeout_seconds: 30
-      full_scan_every_runs: 4
-      user_agent: DemandSpikeDetector/0.1
-      scope_city: hanoi
-    backstage_vn:
-      enabled: true
-      listing_url: https://backstage.vn/su-kien/su-kien-trong-nuoc/
-      max_pages: 20
-      timezone: Asia/Ho_Chi_Minh
-      default_duration_minutes: 180
-      timeout_seconds: 30
-      full_scan_every_runs: 4
-      user_agent: DemandSpikeDetector/0.1
-      scope_city: hanoi
-    ticketbox_comedy:
-      enabled: false  # Disabled: use ticketbox_all instead to avoid duplicates
-      # Ticketbox doesn't expose comedy/theater as categories, so we search by keywords
-      search_url: https://api-v2.ticketbox.vn/search/v2/events
-      # Date range is read from events.event_date_window
-      page_size: 100
-      max_pages: 5
-      max_results_per_keyword: 50
-      timezone: Asia/Ho_Chi_Minh
-      timeout_seconds: 30
-      max_retries: 3
-      full_scan_every_runs: 4
-      user_agent: DemandSpikeDetector/0.1
-      scope_city: hanoi
-    ticketbox_all:
-      enabled: true
-      # Fetch ALL events and classify by title keywords
-      search_url: https://api-v2.ticketbox.vn/search/v2/events
-      # Date range is read from events.event_date_window
-      page_size: 100
-      max_pages: 10
-      timezone: Asia/Ho_Chi_Minh
-      timeout_seconds: 30
-      max_retries: 3
       full_scan_every_runs: 4
       user_agent: DemandSpikeDetector/0.1
       scope_city: hanoi
