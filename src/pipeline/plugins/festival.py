@@ -181,8 +181,13 @@ class LeHoiVietNamEventSource(EventSource):
     source_name = "lehoivietnam_hanoi"
     _EXHIBITION_TERMS = ("triển lãm", "trien lam", "exhibition", "expo", "hội chợ", "hoi cho")
 
-    def __init__(self, config: Mapping[str, Any], session: Any | None = None) -> None:
-        self.config = dict(config)
+    def __init__(
+        self,
+        config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
+        session: Any | None = None,
+    ) -> None:
+        super().__init__(config, event_date_window)
         self.listing_url = self._required_url("listing_url")
         self.max_pages = self._positive_int("max_pages", 20)
         self.timeout_seconds = self._positive_int("timeout_seconds", 30)
@@ -190,6 +195,17 @@ class LeHoiVietNamEventSource(EventSource):
         self.city = str(self.config.get("scope_city", "hanoi"))
         self.timezone = ZoneInfo(str(self.config.get("timezone", "Asia/Ho_Chi_Minh")))
         self.session = session or requests.Session()
+
+        # Parse date window for filtering
+        self._start_date = None
+        self._end_date = None
+        if self.event_date_window:
+            start_str = self.event_date_window.get("start_date")
+            end_str = self.event_date_window.get("end_date")
+            if start_str:
+                self._start_date = self._parse_date(start_str)
+            if end_str:
+                self._end_date = self._parse_date(end_str)
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
         del state, full_scan
@@ -204,6 +220,11 @@ class LeHoiVietNamEventSource(EventSource):
             html, status = self._get(url); statuses.append(status); event = self._event_json_ld(html)
             pages.append({"kind": "event", "url": url, "event": event})
             if event is not None: records.append({"url": url, "event": event})
+
+        # Filter by date window if configured
+        if self._start_date is not None or self._end_date is not None:
+            records = [record for record in records if self._is_within_date_window(record)]
+
         return FetchResult(self.source_name, self.listing_url, to_utc_iso(utc_now()), pages, records, statuses, None)
 
     def normalize(self, raw_record: Mapping[str, Any]) -> EventDraft:
@@ -275,3 +296,32 @@ class LeHoiVietNamEventSource(EventSource):
     def _text(value: object, field: str) -> str:
         if not isinstance(value, str) or not value.strip(): raise SourceFetchError(f"Le Hoi Viet Nam Event requires {field}.")
         return value.strip()
+
+    @staticmethod
+    def _parse_date(value: str) -> datetime:
+        """Parse a YYYY-MM-DD date string."""
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as error:
+            raise ValueError(f"Invalid date format: {value!r}. Expected YYYY-MM-DD.") from error
+
+    def _is_within_date_window(self, record: dict[str, Any]) -> bool:
+        """Check if record's event date is within configured date window."""
+        event = record.get("event")
+        if not isinstance(event, Mapping):
+            return True
+        start_date_str = event.get("startDate")
+        if not start_date_str:
+            return True
+        try:
+            parsed = datetime.fromisoformat(start_date_str.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = datetime.combine(parsed.date(), time.min, self.timezone)
+            record_date = parsed.date()
+        except (ValueError, AttributeError):
+            return True
+        if self._start_date is not None and record_date < self._start_date:
+            return False
+        if self._end_date is not None and record_date > self._end_date:
+            return False
+        return True

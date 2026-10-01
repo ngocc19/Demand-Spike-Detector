@@ -47,11 +47,13 @@ class EventIngestionJob:
             raise ValueError(f"Event source '{source_name}' is disabled in config.")
 
         self.source_config = source_config
-        self.source = source or build_event_source(source_name, source_config)
-        self.lake = lake or EventLake(pipeline_config.get("data_dir", "data"))
         date_window = events_config.get("event_date_window", {})
         if not isinstance(date_window, Mapping):
             raise ValueError("Config section 'events.event_date_window' must be a mapping.")
+        self.source = source or build_event_source(
+            source_name, source_config, event_date_window=date_window
+        )
+        self.lake = lake or EventLake(pipeline_config.get("data_dir", "data"))
         self.attendance_estimator = VenueAttendanceEstimator(
             events_config.get("attendance_estimation", {})
         )

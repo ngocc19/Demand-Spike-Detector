@@ -89,11 +89,12 @@ class VpfFootballEventSource(EventSource):
     def __init__(
         self,
         config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
         session: requests.Session | Any | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         random_fn: Callable[[], float] = random.random,
     ) -> None:
-        self.config = dict(config)
+        super().__init__(config, event_date_window)
         self.calendars = self._parse_calendars(self.config.get("calendars"))
         self.allowed_venues = self._parse_allowed_venues(
             self.config.get("hanoi_venue_allowlist")
@@ -118,6 +119,17 @@ class VpfFootballEventSource(EventSource):
         self.session = session or requests.Session()
         self.sleep_fn = sleep_fn
         self.random_fn = random_fn
+
+        # Parse date window for filtering
+        self._start_date = None
+        self._end_date = None
+        if self.event_date_window:
+            start_str = self.event_date_window.get("start_date")
+            end_str = self.event_date_window.get("end_date")
+            if start_str:
+                self._start_date = self._parse_date(start_str)
+            if end_str:
+                self._end_date = self._parse_date(end_str)
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
         """Fetch the configured calendars; VPF pages have no update watermark."""
@@ -147,6 +159,13 @@ class VpfFootballEventSource(EventSource):
                 }
             )
             fetched_records.extend(hanoi_fixtures)
+
+        # Filter by date window if configured
+        if self._start_date is not None or self._end_date is not None:
+            fetched_records = [
+                record for record in fetched_records
+                if self._is_within_date_window(record)
+            ]
 
         return FetchResult(
             source=self.source_name,
@@ -512,6 +531,34 @@ class VpfFootballEventSource(EventSource):
             raise ValueError(f"VPF config {label} cannot be negative.")
         return parsed
 
+    @staticmethod
+    def _parse_date(value: str) -> datetime:
+        """Parse a YYYY-MM-DD date string."""
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as error:
+            raise ValueError(f"Invalid date format: {value!r}. Expected YYYY-MM-DD.") from error
+
+    def _is_within_date_window(self, record: dict[str, Any]) -> bool:
+        """Check if record's date_text is within configured date window."""
+        date_text = record.get("date_text")
+        if not date_text:
+            return True  # Keep records without date
+        try:
+            # Parse date from text like "15/08/2026"
+            date_parts = re.findall(r"\d+", date_text)
+            if len(date_parts) < 3:
+                return True
+            day, month, year = int(date_parts[0]), int(date_parts[1]), int(date_parts[2])
+            record_date = datetime(year, month, day).date()
+        except (ValueError, IndexError):
+            return True  # Keep records with unparseable dates
+        if self._start_date is not None and record_date < self._start_date:
+            return False
+        if self._end_date is not None and record_date > self._end_date:
+            return False
+        return True
+
 
 class VffFootballEventSource(EventSource):
     """Discover Hanoi national-team fixtures from official VFF match notices."""
@@ -529,11 +576,12 @@ class VffFootballEventSource(EventSource):
     def __init__(
         self,
         config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
         session: requests.Session | Any | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         random_fn: Callable[[], float] = random.random,
     ) -> None:
-        self.config = dict(config)
+        super().__init__(config, event_date_window)
         self.listing_url = self._required_url("listing_url")
         self.max_listing_pages = self._positive_int(
             self.config.get("max_listing_pages", 8),
@@ -559,6 +607,17 @@ class VffFootballEventSource(EventSource):
         self.session = session or requests.Session()
         self.sleep_fn = sleep_fn
         self.random_fn = random_fn
+
+        # Parse date window for filtering
+        self._start_date = None
+        self._end_date = None
+        if self.event_date_window:
+            start_str = self.event_date_window.get("start_date")
+            end_str = self.event_date_window.get("end_date")
+            if start_str:
+                self._start_date = self._parse_date(start_str)
+            if end_str:
+                self._end_date = self._parse_date(end_str)
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
         """Fetch VFF notice pages, then only their football-related articles."""
@@ -597,6 +656,13 @@ class VffFootballEventSource(EventSource):
             record = self._parse_article(article_url, html)
             if record:
                 records.append(record)
+
+        # Filter by date window if configured
+        if self._start_date is not None or self._end_date is not None:
+            records = [
+                record for record in records
+                if self._is_within_date_window(record)
+            ]
 
         return FetchResult(
             source=self.source_name,
@@ -840,3 +906,30 @@ class VffFootballEventSource(EventSource):
         if parsed < 0:
             raise ValueError(f"VFF config {label} cannot be negative.")
         return parsed
+
+    @staticmethod
+    def _parse_date(value: str) -> datetime:
+        """Parse a YYYY-MM-DD date string."""
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid date format: {value!r}. Expected YYYY-MM-DD."
+            ) from error
+
+    def _is_within_date_window(self, record: dict[str, Any]) -> bool:
+        """Check if record's start_at_utc is within configured date window."""
+        start_at_utc = record.get("start_at_utc")
+        if not start_at_utc:
+            return True  # Keep records without date
+        try:
+            start_dt = datetime.fromisoformat(start_at_utc.replace("Z", "+00:00"))
+            record_date = start_dt.date()
+        except (ValueError, AttributeError):
+            return True  # Keep records with unparseable dates
+
+        if self._start_date is not None and record_date < self._start_date:
+            return False
+        if self._end_date is not None and record_date > self._end_date:
+            return False
+        return True

@@ -106,6 +106,9 @@ class EventDraft:
     venue_capacity_key: str | None = None
     official_attendance: int | None = None
     attendance_source_url: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    h3_index: str | None = None
 
     def to_record(self, run_id: str, ingested_at_utc: str) -> dict[str, Any]:
         """Return the canonical curated record without storage-owned fields."""
@@ -135,25 +138,64 @@ class EventDraft:
             "venue_capacity_key": self.venue_capacity_key,
             "official_attendance": self.official_attendance,
             "attendance_source_url": self.attendance_source_url,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "h3_index": self.h3_index,
         }
         return {
             "event_id": event_id,
             **version_material,
             "version_hash": canonical_json_hash(version_material),
             "venue_id": None,
-            "latitude": None,
-            "longitude": None,
-            "location_status": "unresolved" if self.venue_raw else "missing",
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "h3_index": self.h3_index,
+            "location_status": self._derive_location_status(),
             "ingested_at_utc": ingested_at_utc,
             "run_id": run_id,
             "schema_version": EVENT_SCHEMA_VERSION,
         }
+
+    def _derive_location_status(self) -> str:
+        """Derive location resolution status from venue and coordinate fields."""
+        if self.latitude is not None and self.longitude is not None:
+            return "resolved"
+        if self.h3_index is not None:
+            return "resolved"
+        if self.venue_raw:
+            return "unresolved"
+        return "missing"
 
 
 class EventSource(ABC):
     """Contract implemented by each permitted event source adapter."""
 
     source_name: str
+
+    def __init__(
+        self,
+        config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
+    ) -> None:
+        """Initialize source with config and optional date window filter.
+
+        Args:
+            config: Source-specific configuration
+            event_date_window: Optional date range filter with keys 'start_date' and 'end_date'
+                               in ISO format (YYYY-MM-DD). When provided, only events within
+                               this range are collected.
+        """
+        self.config = dict(config)
+        self.event_date_window = event_date_window
+
+    def get_date_range(self) -> tuple[str | None, str | None]:
+        """Return (start_date, end_date) from event_date_window or None."""
+        if self.event_date_window is None:
+            return None, None
+        return (
+            self.event_date_window.get("start_date"),
+            self.event_date_window.get("end_date"),
+        )
 
     @abstractmethod
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:

@@ -1,4 +1,8 @@
-"""Ticketbox concert discovery using Ticketbox's public search and event pages."""
+"""Ticketbox comedy and theater event discovery using keyword search.
+
+Ticketbox's API doesn't expose comedy/theater as categories.
+Instead, we search by keywords to find these events.
+"""
 
 from __future__ import annotations
 
@@ -16,38 +20,54 @@ from ..base import EventDraft, EventSource, FetchResult, canonical_json_hash, to
 from .event_plugin import EventRecordError, SourceFetchError
 
 
-class TicketboxConcertEventSource(EventSource):
-    """Collect completed Ticketbox music events whose detailed address is in Hanoi."""
+class TicketboxComedyEventSource(EventSource):
+    """Collect Ticketbox comedy and theater events in Hanoi using keyword search."""
 
-    source_name = "ticketbox_concert"
-    _EXCLUDED_TITLE_TERMS = ("merchandise", "merch ", "workshop", "festival")
+    source_name = "ticketbox_comedy"
+    _EXCLUDED_TITLE_TERMS = ("merchandise", "merch ", "workshop")
+
+    # Keywords to search for comedy/theater events
+    _KEYWORDS = [
+        "comedy",
+        "hài",
+        "kịch",
+        "theater",
+        "theatre",
+        "sân khấu",
+        "stand-up",
+        "rạp xiếc",
+        "xiếc",
+    ]
 
     def __init__(
         self,
         config: Mapping[str, Any],
-        event_date_window: Mapping[str, str] | None = None,
+        event_date_window: Mapping[str, Any] | None = None,
         session: requests.Session | Any | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         random_fn: Callable[[], float] = random.random,
     ) -> None:
         super().__init__(config, event_date_window)
         self.search_url = self._required_url("search_url")
-        self.category = self._required_string(self.config.get("category"), "category")
 
-        # Use event_date_window if provided, otherwise fall back to source config
+        # Use event_date_window if provided, otherwise use defaults
         if event_date_window:
             start_str = event_date_window.get("start_date")
             end_str = event_date_window.get("end_date")
-            self.from_date = self._parse_date(start_str, "start_date") if start_str else date(1970, 1, 1)
-            self.to_date = self._parse_date(end_str, "end_date") if end_str else date(2999, 12, 31)
         else:
-            self.from_date = self._parse_date(self.config.get("from_date"), "from_date")
-            self.to_date = self._parse_date(self.config.get("to_date"), "to_date")
+            start_str = self.config.get("from_date")
+            end_str = self.config.get("to_date")
+
+        self.from_date = self._parse_date(start_str, "start_date") if start_str else date(1970, 1, 1)
+        self.to_date = self._parse_date(end_str, "end_date") if end_str else date(2999, 12, 31)
 
         if self.to_date < self.from_date:
             raise ValueError("Ticketbox to_date must not precede from_date.")
         self.page_size = self._positive_int(self.config.get("page_size", 100), "page_size")
         self.max_pages = self._positive_int(self.config.get("max_pages", 5), "max_pages")
+        self.max_results_per_keyword = self._positive_int(
+            self.config.get("max_results_per_keyword", 50), "max_results_per_keyword"
+        )
         self.timeout_seconds = self._positive_int(
             self.config.get("timeout_seconds", 30), "timeout_seconds"
         )
@@ -60,7 +80,7 @@ class TicketboxConcertEventSource(EventSource):
         self.random_fn = random_fn
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
-        """Query public music search pages, then verify Hanoi from each event page."""
+        """Search Ticketbox by keywords to find comedy/theater events."""
 
         del state, full_scan
         requested_at_utc = to_utc_iso(utc_now())
@@ -68,35 +88,46 @@ class TicketboxConcertEventSource(EventSource):
         statuses: list[int] = []
         candidates: dict[int, dict[str, Any]] = {}
 
-        for page in range(1, self.max_pages + 1):
-            payload, status = self._request_json(
-                self.search_url,
-                params={
-                    "limit": self.page_size,
+        # Search by each keyword
+        for keyword in self._KEYWORDS:
+            for page in range(1, self.max_pages + 1):
+                payload, status = self._request_json(
+                    self.search_url,
+                    params={
+                        "limit": self.page_size,
+                        "page": page,
+                        "q": keyword,
+                        "from": self.from_date.isoformat(),
+                        "to": self.to_date.isoformat(),
+                        "at": "custom-date",
+                    },
+                )
+                statuses.append(status)
+                response_pages.append({
+                    "kind": "search",
+                    "keyword": keyword,
                     "page": page,
-                    "categories": self.category,
-                    "from": self.from_date.isoformat(),
-                    "to": self.to_date.isoformat(),
-                    "at": "custom-date",
-                },
-            )
-            statuses.append(status)
-            response_pages.append({"kind": "search", "page": page, "payload": payload})
-            data = self._mapping(payload.get("data"), "Ticketbox search data")
-            results = data.get("results", [])
-            if not isinstance(results, list):
-                raise SourceFetchError("Ticketbox search results must be a list.")
-            for result in results:
-                if not isinstance(result, Mapping):
+                    "payload": payload,
+                })
+                data = self._mapping(payload.get("data"), "Ticketbox search data")
+                results = data.get("results", [])
+                if not isinstance(results, list):
                     continue
-                event_id = self._event_id(result)
-                if event_id is not None:
-                    candidates[event_id] = dict(result)
-            pagination = data.get("pagination", {})
-            has_more = isinstance(pagination, Mapping) and pagination.get("hasMore") is True
-            if not has_more:
-                break
+                for result in results:
+                    if not isinstance(result, Mapping):
+                        continue
+                    event_id = self._event_id(result)
+                    if event_id is not None and event_id not in candidates:
+                        candidates[event_id] = dict(result)
+                pagination = data.get("pagination", {})
+                has_more = isinstance(pagination, Mapping) and pagination.get("hasMore") is True
+                if not has_more:
+                    break
+                # Limit results per keyword
+                if len(candidates) >= self.max_results_per_keyword * (self._KEYWORDS.index(keyword) + 1):
+                    break
 
+        # Verify each event from detail pages
         records: list[dict[str, Any]] = []
         for result in candidates.values():
             public_url = self._public_url(result)
@@ -123,7 +154,7 @@ class TicketboxConcertEventSource(EventSource):
         )
 
     def normalize(self, raw_record: Mapping[str, Any]) -> EventDraft:
-        """Map a verified Ticketbox concert page to the common event contract."""
+        """Map a verified Ticketbox comedy/theater event to the common contract."""
 
         event_id = self._event_id(raw_record)
         if event_id is None:
@@ -134,8 +165,8 @@ class TicketboxConcertEventSource(EventSource):
             source_event_id=str(event_id),
             title=self._required_string(raw_record.get("title"), "title"),
             description=self._optional_string(raw_record.get("description")),
-            raw_category=self.category,
-            primary_category="concert",
+            raw_category="comedy_theater",
+            primary_category="comedy_theater",
             publication_status="published",
             event_status=str(raw_record.get("event_status") or "unknown"),
             start_at_utc=start_at_utc,
@@ -146,7 +177,7 @@ class TicketboxConcertEventSource(EventSource):
             source_updated_at_utc=None,
             raw_payload_sha256=canonical_json_hash(dict(raw_record)),
             city=self.city,
-            tags=["concert", "ticketbox", "music"],
+            tags=["comedy", "theater", "ticketbox", "entertainment"],
         )
 
     def _record_from_page(
@@ -158,16 +189,15 @@ class TicketboxConcertEventSource(EventSource):
         info = page_props.get("infoEvent")
         if not isinstance(info, Mapping):
             return None
-        categories = info.get("categories")
-        if not isinstance(categories, list) or self.category not in categories:
-            return None
         title = self._optional_string(info.get("title")) or self._optional_string(search_result.get("name"))
         venue = self._optional_string(info.get("venue"))
         address = self._optional_string(info.get("address"))
         start_at_utc = self._optional_string(info.get("startTime"))
         if not title or not venue or not start_at_utc:
             return None
-        if self._is_excluded_title(title) or not self._is_hanoi(venue, address):
+        if self._is_excluded_title(title):
+            return None
+        if not self._is_hanoi(venue, address):
             return None
         try:
             local_date = datetime.fromisoformat(

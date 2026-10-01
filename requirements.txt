@@ -1,3 +1,5 @@
 requests>=2.31,<3
 PyYAML>=6,<7
 openpyxl>=3.1,<4
+geopy>=2.4,<3
+h3>=3.7,<4

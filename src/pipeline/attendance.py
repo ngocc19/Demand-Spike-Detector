@@ -17,6 +17,9 @@ class VenueCapacity:
     key: str
     capacity: int
     aliases: tuple[str, ...]
+    latitude: float | None = None
+    longitude: float | None = None
+    h3_index: str | None = None
 
 
 @dataclass(frozen=True)
@@ -60,10 +63,16 @@ class VenueAttendanceEstimator:
         )
 
     def enrich(self, draft: EventDraft) -> EventDraft:
-        """Attach an auditable heuristic; it is not observed ticket sales."""
+        """Attach attendance estimate and spatial coordinates from venue lookup."""
 
         venue = self._match_venue(draft.venue_raw)
         override = self._match_reported_attendance_override(draft)
+
+        # Build common location fields from matched venue
+        lat = venue.latitude if venue else None
+        lng = venue.longitude if venue else None
+        h3 = venue.h3_index if venue else None
+
         if override is not None:
             return replace(
                 draft,
@@ -73,6 +82,9 @@ class VenueAttendanceEstimator:
                 attendee_estimation_method="verified_reported_attendance",
                 venue_capacity=venue.capacity if venue else None,
                 venue_capacity_key=venue.key if venue else None,
+                latitude=lat,
+                longitude=lng,
+                h3_index=h3,
             )
         if draft.official_attendance is not None:
             return replace(
@@ -81,6 +93,9 @@ class VenueAttendanceEstimator:
                 attendee_estimation_method="official_reported_attendance",
                 venue_capacity=venue.capacity if venue else None,
                 venue_capacity_key=venue.key if venue else None,
+                latitude=lat,
+                longitude=lng,
+                h3_index=h3,
             )
         if not self.fill_missing_with_heuristic:
             return replace(
@@ -89,6 +104,9 @@ class VenueAttendanceEstimator:
                 attendee_estimation_method=None,
                 venue_capacity=None,
                 venue_capacity_key=None,
+                latitude=lat,
+                longitude=lng,
+                h3_index=h3,
             )
         capacity = venue.capacity if venue else self.default_capacity
         fill_rate = self.fill_rates.get(
@@ -106,6 +124,9 @@ class VenueAttendanceEstimator:
             attendee_estimation_method=method,
             venue_capacity=capacity,
             venue_capacity_key=venue.key if venue else None,
+            latitude=lat,
+            longitude=lng,
+            h3_index=h3,
         )
 
     def _parse_reported_attendance_overrides(
@@ -169,6 +190,9 @@ class VenueAttendanceEstimator:
             if not isinstance(key, str) or not key.strip():
                 raise ValueError("Venue capacity keys must be non-empty strings.")
             aliases: list[str] = [key]
+            latitude: float | None = None
+            longitude: float | None = None
+            h3_index: str | None = None
             if isinstance(value, Mapping):
                 capacity = self._positive_int(
                     value.get("capacity"),
@@ -182,12 +206,24 @@ class VenueAttendanceEstimator:
                         f"venue_capacities.{key}.aliases must be a list of strings."
                     )
                 aliases.extend(configured_aliases)
+                latitude = self._optional_float(value.get("lat"), f"venue_capacities.{key}.lat")
+                latitude = self._optional_float(value.get("latitude"), f"venue_capacities.{key}.latitude") or latitude
+                longitude = self._optional_float(value.get("lng"), f"venue_capacities.{key}.lng")
+                longitude = self._optional_float(value.get("longitude"), f"venue_capacities.{key}.longitude") or longitude
+                h3_index = self._optional_string(value.get("h3_index"), f"venue_capacities.{key}.h3_index")
             else:
                 capacity = self._positive_int(value, f"venue_capacities.{key}")
             normalized_aliases = tuple(
                 alias for alias in aliases if self._normalize_venue(alias)
             )
-            venues.append(VenueCapacity(key=key, capacity=capacity, aliases=normalized_aliases))
+            venues.append(VenueCapacity(
+                key=key,
+                capacity=capacity,
+                aliases=normalized_aliases,
+                latitude=latitude,
+                longitude=longitude,
+                h3_index=h3_index,
+            ))
         return tuple(venues)
 
     def _match_venue(self, venue_raw: str | None) -> VenueCapacity | None:
@@ -253,3 +289,20 @@ class VenueAttendanceEstimator:
         if not isinstance(value, bool):
             raise ValueError(f"{label} must be true or false.")
         return value
+
+    @staticmethod
+    def _optional_float(value: object, label: str) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{label} must be a number.") from error
+
+    @staticmethod
+    def _optional_string(value: object, label: str) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError(f"{label} must be a string.")
+        return value.strip() or None

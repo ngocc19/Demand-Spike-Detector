@@ -110,11 +110,12 @@ class VanMieuEventSource(EventSource):
     def __init__(
         self,
         config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
         session: requests.Session | Any | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         random_fn: Callable[[], float] = random.random,
     ) -> None:
-        self.config = dict(config)
+        super().__init__(config, event_date_window)
         self.endpoint = self._required_text("endpoint")
         self.listing_url = self._required_text("listing_url")
         self.resolve_article_urls = self._boolean(
@@ -141,6 +142,17 @@ class VanMieuEventSource(EventSource):
         self.session = session or requests.Session()
         self.sleep_fn = sleep_fn
         self.random_fn = random_fn
+
+        # Parse date window for filtering
+        self._start_date = None
+        self._end_date = None
+        if self.event_date_window:
+            start_str = self.event_date_window.get("start_date")
+            end_str = self.event_date_window.get("end_date")
+            if start_str:
+                self._start_date = self._parse_date(start_str, "start_date")
+            if end_str:
+                self._end_date = self._parse_date(end_str, "end_date")
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
         """Fetch all pages, using a watermark when this is an incremental run."""
@@ -248,6 +260,13 @@ class VanMieuEventSource(EventSource):
             response_pages.extend(listing_artifacts)
             http_statuses.extend(listing_statuses)
             state_updates["article_url_cache_by_slug"] = article_url_cache
+
+        # Filter by date window if configured
+        if self._start_date is not None or self._end_date is not None:
+            fetched_records = [
+                record for record in fetched_records
+                if self._is_within_date_window(record)
+            ]
 
         return FetchResult(
             source=self.source_name,
@@ -824,3 +843,30 @@ class VanMieuEventSource(EventSource):
 
         visit(value)
         return " ".join(fragments)
+
+    def _parse_date(self, value: str, field_name: str) -> datetime:
+        """Parse a YYYY-MM-DD date string."""
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid date format for {field_name}: {value!r}. Expected YYYY-MM-DD."
+            ) from error
+
+    def _is_within_date_window(self, record: dict[str, Any]) -> bool:
+        """Check if record's startDate is within configured date window."""
+        start_date_str = record.get("startDate")
+        if not start_date_str:
+            return True  # Keep records without date (let normalize handle validation)
+        try:
+            # Parse the startDate - handle various formats
+            start_dt = datetime.fromisoformat(start_date_str.replace("Z", "+00:00"))
+            record_date = start_dt.date()
+        except (ValueError, AttributeError):
+            return True  # Keep records with unparseable dates
+
+        if self._start_date is not None and record_date < self._start_date:
+            return False
+        if self._end_date is not None and record_date > self._end_date:
+            return False
+        return True

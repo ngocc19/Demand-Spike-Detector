@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any, Mapping
@@ -45,10 +45,31 @@ class OfficialOtherEventSource(EventSource):
     _DATE_WORDS = re.compile(r"ngày\s*(\d{1,2})\s*tháng\s*(\d{1,2})\s*năm\s*(20\d{2})", re.I)
     _TIME = re.compile(r"(?:lúc|vào)\s*(\d{1,2})(?:\s*(?:giờ|h))?(?:\s*[:h]\s*(\d{2}))?", re.I)
 
-    def __init__(self, config: Mapping[str, Any], session: Any | None = None) -> None:
-        self.config = dict(config); self.sources = self._sources(); self.timeout = int(self.config.get("timeout_seconds", 30))
-        self.timezone = ZoneInfo(str(self.config.get("timezone", "Asia/Ho_Chi_Minh"))); self.city = str(self.config.get("scope_city", "hanoi"))
-        self.duration = int(self.config.get("default_duration_minutes", 180)); self.user_agent = str(self.config.get("user_agent", "DemandSpikeDetector/0.1")); self.session = session or requests.Session()
+    def __init__(
+        self,
+        config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
+        session: Any | None = None,
+    ) -> None:
+        super().__init__(config, event_date_window)
+        self.sources = self._sources()
+        self.timeout = int(self.config.get("timeout_seconds", 30))
+        self.timezone = ZoneInfo(str(self.config.get("timezone", "Asia/Ho_Chi_Minh")))
+        self.city = str(self.config.get("scope_city", "hanoi"))
+        self.duration = int(self.config.get("default_duration_minutes", 180))
+        self.user_agent = str(self.config.get("user_agent", "DemandSpikeDetector/0.1"))
+        self.session = session or requests.Session()
+
+        # Parse date window for filtering
+        self._start_date = None
+        self._end_date = None
+        if self.event_date_window:
+            start_str = self.event_date_window.get("start_date")
+            end_str = self.event_date_window.get("end_date")
+            if start_str:
+                self._start_date = self._parse_date(start_str)
+            if end_str:
+                self._end_date = self._parse_date(end_str)
 
     def fetch(self, state: Mapping[str, Any], full_scan: bool) -> FetchResult:
         pages: list[dict[str, Any]] = []; statuses: list[int] = []; urls: set[str] = set()
@@ -72,6 +93,11 @@ class OfficialOtherEventSource(EventSource):
             pages.append({"kind": "article", "url": url, "accepted": bool(records and records[-1].get("url") == url)})
         for seed in self.config.get("seed_events", []):
             if isinstance(seed, Mapping): records.append({"seed": dict(seed)})
+
+        # Filter by date window if configured
+        if self._start_date is not None or self._end_date is not None:
+            records = [record for record in records if self._is_within_date_window(record)]
+
         return FetchResult(self.source_name, self.sources[0]["listing_url"], to_utc_iso(utc_now()), pages, records, statuses, None, state_updates={"known_article_urls": sorted(known | urls)})
 
     def normalize(self, raw: Mapping[str, Any]) -> EventDraft:
@@ -132,3 +158,46 @@ class OfficialOtherEventSource(EventSource):
         raw=value.get(key)
         if not isinstance(raw,str) or not raw.strip(): raise EventRecordError(f"Seed event requires {key}.")
         return raw.strip()
+
+    @staticmethod
+    def _parse_date(value: str) -> date:
+        """Parse a YYYY-MM-DD date string."""
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError as error:
+            raise ValueError(f"Invalid date format: {value!r}. Expected YYYY-MM-DD.") from error
+
+    def _is_within_date_window(self, record: dict[str, Any]) -> bool:
+        """Check if record's event date is within configured date window."""
+        # For seed events, use start_at_utc
+        if isinstance(record.get("seed"), Mapping):
+            start_at_utc = record["seed"].get("start_at_utc")
+        else:
+            # Extract date from body text for regular records
+            text = record.get("body", "")
+            dates = list(self._DATE_NUMERIC.finditer(text)) + list(self._DATE_WORDS.finditer(text))
+            if not dates:
+                return True  # Keep records without date
+            # Get first date found
+            match = dates[0]
+            start_at_utc = f"{match.group(3)}-{int(match.group(2)):02d}-{int(match.group(1)):02d}"
+
+        if not start_at_utc:
+            return True
+        try:
+            # Try parsing as datetime first
+            if isinstance(start_at_utc, str):
+                if "T" in start_at_utc or "Z" in start_at_utc:
+                    dt = datetime.fromisoformat(start_at_utc.replace("Z", "+00:00"))
+                else:
+                    dt = datetime.strptime(start_at_utc, "%Y-%m-%d")
+                record_date = dt.date()
+            else:
+                return True
+        except (ValueError, AttributeError):
+            return True
+        if self._start_date is not None and record_date < self._start_date:
+            return False
+        if self._end_date is not None and record_date > self._end_date:
+            return False
+        return True
