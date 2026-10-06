@@ -2,13 +2,14 @@
 Expand events into time slots for spike detection.
 ==========================================
 
-This script reads event.csv and expands each event into multiple rows,
+This script reads event file (CSV or Excel) and expands each event into multiple rows,
 one for each time slot (default: 30 minutes).
 
 Usage:
-    python expand_time_slots.py              # Default: 30 min slots
-    python expand_time_slots.py --slot 15   # 15 min slots
-    python expand_time_slots.py --slot 60   # 60 min slots
+    python expand_time_slots.py                      # Default: 30 min slots
+    python expand_time_slots.py --slot 15            # 15 min slots
+    python expand_time_slots.py --slot 60            # 60 min slots
+    python expand_time_slots.py --input data.xlsx    # Read from Excel
 
 Configuration:
     SLOT_MINUTES: Change this to modify slot duration
@@ -19,6 +20,7 @@ import json
 from pathlib import Path
 import argparse
 import h3
+import pandas as pd
 
 # ============================================================
 # CONFIGURATION - CHANGE THIS TO MODIFY SLOT DURATION
@@ -146,96 +148,106 @@ def expand_to_slots(start_time: str, end_time: str, slot_minutes: int = SLOT_MIN
     return slots
 
 
-def process_events(csv_path: Path, slot_minutes: int = SLOT_MINUTES) -> dict:
+def process_events(input_path: Path, slot_minutes: int = SLOT_MINUTES,
+                   filter_hanoi: bool = True) -> dict:
     """
-    Process event CSV and expand to time slots.
+    Process event file (CSV or Excel) and expand to time slots.
 
     Args:
-        csv_path: Path to event.csv
+        input_path: Path to event file (CSV or Excel)
         slot_minutes: Slot duration in minutes
+        filter_hanoi: Whether to filter events within Hanoi bounds
 
     Returns:
         Dictionary with processing statistics
     """
-    # Load cache if exists
-    cache_path = csv_path.parent / '.geocode_cache.json'
-    cache = {}
-    if cache_path.exists():
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            cache = json.load(f)
+    # Determine file type
+    is_excel = input_path.suffix.lower() in ['.xlsx', '.xls']
 
-    # Merge cache into VENUE_COORDINATES for this run
-    all_coords = dict(VENUE_COORDINATES)
-    all_coords.update(cache)
+    # Read input file
+    if is_excel:
+        df = pd.read_excel(input_path)
+    else:
+        df = pd.read_csv(input_path, encoding='utf-8')
 
-    # Read CSV
-    rows = []
-    with open(csv_path, 'r', encoding='utf-8', newline='') as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames)
-        rows = list(reader)
+    print(f'Original events: {len(df)}')
 
-    print(f'Original events: {len(rows)}')
+    # Step 1: Geocode and filter Hanoi if needed
+    if filter_hanoi:
+        # Load cache
+        cache_path = input_path.parent / '.geocode_cache.json'
+        cache = {}
+        if cache_path.exists():
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                cache = json.load(f)
 
-    # Step 1: Geocode and filter Hanoi
-    processed_rows = []
-    for row in rows:
-        lat, lon = geocode_venue(row.get('venue', ''))
+        # Merge cache into coordinates
+        all_coords = dict(VENUE_COORDINATES)
+        all_coords.update(cache)
 
-        # Try cache first
-        if lat is None:
-            normalized = row.get('venue', '').lower().strip()
+        # Geocode events
+        def get_coords(venue):
+            if pd.isna(venue) or venue == '':
+                return None, None
+            normalized = str(venue).lower().strip()
             if normalized in all_coords:
-                lat, lon = all_coords[normalized]
+                return all_coords[normalized]
+            return None, None
 
-        if lat and lon and in_hanoi(lat, lon):
-            row['latitude'] = f'{lat:.6f}'
-            row['longitude'] = f'{lon:.6f}'
-            row['h3_index'] = h3.latlng_to_cell(lat, lon, H3_RESOLUTION)
-            processed_rows.append(row)
+        coords = df['venue'].apply(get_coords)
+        df['latitude'] = coords.apply(lambda x: x[0])
+        df['longitude'] = coords.apply(lambda x: x[1])
 
-    print(f'After Hanoi filter: {len(processed_rows)} events')
+        # Filter Hanoi
+        mask = df.apply(
+            lambda row: row['latitude'] is not None and
+                       in_hanoi(row['latitude'], row['longitude']),
+            axis=1
+        )
+        df = df[mask].copy()
+        print(f'After Hanoi filter: {len(df)} events')
+
+        # Add H3 index
+        df['h3_index'] = df.apply(
+            lambda row: h3.latlng_to_cell(row['latitude'], row['longitude'], H3_RESOLUTION),
+            axis=1
+        )
 
     # Step 2: Expand into time slots
     expanded_rows = []
-    for row in processed_rows:
+    for _, row in df.iterrows():
         slots = expand_to_slots(
-            row['start_time'],
-            row['end_time'],
+            str(row['start_time']),
+            str(row['end_time']),
             slot_minutes
         )
 
         for slot in slots:
-            new_row = row.copy()
-            new_row['time_slot'] = slot
+            new_row = row.to_dict()
+            new_row['slot_time'] = slot  # Changed from 'time_slot' to 'slot_time'
             expanded_rows.append(new_row)
 
-    print(f'After {slot_minutes}-min expansion: {len(expanded_rows)} rows')
+    expanded_df = pd.DataFrame(expanded_rows)
+    print(f'After {slot_minutes}-min expansion: {len(expanded_df)} rows')
 
-    # Step 3: Update fieldnames and write CSV
-    new_fields = ['latitude', 'longitude', 'h3_index', 'time_slot']
-    for field in new_fields:
-        if field not in fieldnames:
-            fieldnames.append(field)
-
-    with open(csv_path, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-        writer.writeheader()
-        writer.writerows(expanded_rows)
+    # Step 3: Save output (same format as input)
+    output_path = input_path
+    if is_excel:
+        expanded_df.to_excel(output_path, index=False)
+    else:
+        expanded_df.to_csv(output_path, index=False, encoding='utf-8')
 
     # Calculate statistics
     slot_distribution = {}
-    for row in expanded_rows:
-        slot = row['time_slot']
+    for slot in expanded_df['slot_time']:
         hour = int(slot.split(':')[0])
         slot_distribution[hour] = slot_distribution.get(hour, 0) + 1
 
     return {
-        'original_events': len(rows),
-        'after_hanoi_filter': len(processed_rows),
-        'expanded_rows': len(expanded_rows),
+        'original_events': len(df),
+        'expanded_rows': len(expanded_df),
         'slot_minutes': slot_minutes,
-        'slots_per_event': len(expanded_rows) / len(processed_rows) if processed_rows else 0,
+        'slots_per_event': len(expanded_df) / len(df) if len(df) > 0 else 0,
         'slot_distribution': slot_distribution
     }
 
@@ -250,33 +262,38 @@ def main():
         help=f'Slot duration in minutes (default: {SLOT_MINUTES})'
     )
     parser.add_argument(
-        '--csv',
+        '--input', '-i',
         type=str,
         default='data/event.csv',
-        help='Path to event.csv (default: data/event.csv)'
+        help='Path to event file (CSV or Excel). Default: data/event.csv'
+    )
+    parser.add_argument(
+        '--no-filter',
+        action='store_true',
+        help='Skip Hanoi location filter (use existing lat/lon/h3_index)'
     )
 
     args = parser.parse_args()
 
-    csv_path = Path(args.csv)
-    if not csv_path.exists():
-        print(f'Error: {csv_path} not found')
+    input_path = Path(args.input)
+    if not input_path.exists():
+        print(f'Error: {input_path} not found')
         return
 
     print('=' * 60)
     print(f'EXPAND TIME SLOTS - {args.slot} MINUTES')
+    print(f'Input: {input_path}')
     print('=' * 60)
     print()
 
-    stats = process_events(csv_path, args.slot)
+    stats = process_events(input_path, args.slot, filter_hanoi=not args.no_filter)
 
     print()
     print('=' * 60)
     print('SUMMARY')
     print('=' * 60)
     print(f'Slot duration: {args.slot} minutes')
-    print(f'Original events: {stats["original_events"]}')
-    print(f'After Hanoi filter: {stats["after_hanoi_filter"]}')
+    print(f'Events processed: {stats["original_events"]}')
     print(f'Expanded rows: {stats["expanded_rows"]}')
     print(f'Avg slots/event: {stats["slots_per_event"]:.1f}')
     print()
@@ -284,7 +301,7 @@ def main():
     for hour in range(24):
         if hour in stats['slot_distribution']:
             count = stats['slot_distribution'][hour]
-            bar = '█' * (count // 10)
+            bar = '#' * (count // 10)
             print(f'  {hour:02d}:00 - {count:4d} {bar}')
 
 

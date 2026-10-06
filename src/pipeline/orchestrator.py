@@ -21,6 +21,12 @@ from .event_workbook import EventWorkbookExporter
 from .registry import build_event_source
 from .storage import EventLake
 
+try:
+    from ..geocode_venues import VenueGeocoder, lat_lon_to_h3
+    HAS_GEOCODER = True
+except ImportError:
+    HAS_GEOCODER = False
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -189,6 +195,16 @@ class EventIngestionJob:
                 valid_records,
             )
             csv_result = self.csv_exporter.export()
+
+            # Geocode venues after CSV export
+            if HAS_GEOCODER:
+                geocode_result = self._geocode_events()
+                LOGGER.info(
+                    "Geocoding: %d/%d events geocoded",
+                    geocode_result["geocoded"],
+                    geocode_result["total"],
+                )
+
             workbook_result = self.workbook_exporter.export()
             watermark_after = self._maximum_seen_watermark(
                 fetch_result.fetched_records, state.get("watermark_utc")
@@ -276,6 +292,88 @@ class EventIngestionJob:
                     "Could not write failure manifest for source %s.", self.source_name
                 )
             raise
+
+    def _geocode_events(self) -> dict[str, int]:
+        """Geocode venues in the event CSV."""
+        import csv
+        import json
+        import h3
+
+        data_dir = self.lake.root
+        csv_path = data_dir / "event.csv"
+        cache_path = data_dir / ".geocode_cache.json"
+
+        # Load geocoding cache
+        cache = {}
+        if cache_path.exists():
+            with open(cache_path, "r", encoding="utf-8") as f:
+                cache = json.load(f)
+
+        # Load VENUE_COORDINATES from geocode_venues module
+        try:
+            from ..geocode_venues import VENUE_COORDINATES as VENUES
+        except ImportError:
+            VENUES = {}
+
+        H3_RESOLUTION = 8
+
+        # Read CSV
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            fieldnames = list(reader.fieldnames)
+            rows = list(reader)
+
+        # Ensure columns exist
+        for col in ["latitude", "longitude", "h3_index"]:
+            if col not in fieldnames:
+                fieldnames.append(col)
+
+        geocoded = 0
+        total = len(rows)
+
+        for row in rows:
+            venue = row.get("venue", "").strip()
+            if not venue:
+                continue
+
+            norm = venue.lower().strip()
+            lat, lon = None, None
+
+            # Check cache
+            if norm in cache:
+                lat, lon = cache[norm][0], cache[norm][1]
+            else:
+                # Check hardcoded venues
+                for key, coords in VENUES.items():
+                    if key in norm or norm in key:
+                        lat, lon = coords[0], coords[1]
+                        break
+
+                # Try "tại X" pattern
+                if lat is None and " tại " in norm:
+                    location = norm.split(" tại ")[-1].strip().rstrip(".,;")
+                    for key, coords in VENUES.items():
+                        if key in location or location in key:
+                            lat, lon = coords[0], coords[1]
+                            break
+
+            if lat is not None and lon is not None:
+                row["latitude"] = f"{lat:.6f}"
+                row["longitude"] = f"{lon:.6f}"
+                row["h3_index"] = h3.latlng_to_cell(lat, lon, H3_RESOLUTION)
+                geocoded += 1
+            else:
+                row["latitude"] = ""
+                row["longitude"] = ""
+                row["h3_index"] = ""
+
+        # Write back
+        with open(csv_path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+
+        return {"geocoded": geocoded, "total": total}
 
     def _should_run_full_scan(self, state: Mapping[str, Any]) -> bool:
         if not state.get("watermark_utc"):

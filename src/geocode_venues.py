@@ -29,6 +29,7 @@ VENUE_COORDINATES: dict[str, tuple[float, float]] = {
     "vườn giám": (21.0369, 105.8351),
     "tiền đường": (21.0369, 105.8351),
     "nhà thái học": (21.0369, 105.8351),
+    "hoàng thành thăng long": (21.0380, 105.8348),
 
     # Sports venues
     "cung thể thao điền kinh mỹ đình": (21.0636, 105.7639),
@@ -43,16 +44,18 @@ VENUE_COORDINATES: dict[str, tuple[float, float]] = {
     "trung tâm hội nghị quốc gia": (21.0402, 105.7871),
     "việt thương concert hall": (21.0276, 105.8529),
     "aplus hanoi": (21.0285, 105.8527),
+    "nhà hát ca múa nhạc thăng long": (21.0285, 105.8527),
+    "1900 le theatre": (21.0285, 105.8527),
 
     # Cultural centers & Museums
     "cung văn hóa lao động hữu nghị việt xô": (21.0085, 105.7832),
     "cung văn hóa lao động hữu nghị việt - xô": (21.0085, 105.7832),
-    "bảo tàng hưng yên": (20.6465, 106.0515),
-    "bảo tàng khánh hoà": (12.2388, 109.1967),
+    
 
     # Malls & Shopping
     "aeon mall hà đông": (20.9828, 105.7854),
     "go! thăng long": (21.0136, 105.7989),
+    "mipec long biên": (21.0487, 105.8745),
     "đại siêu thị go! thăng long": (21.0136, 105.7989),
 
     # Public areas
@@ -72,12 +75,12 @@ VENUE_COORDINATES: dict[str, tuple[float, float]] = {
     "trường thcs hoàng liệt": (20.9867, 105.8356),
     "đại học sư phạm hà nội": (21.0367, 105.8018),
     "đh sư phạm hà nội": (21.0367, 105.8018),
-    "xuân thủy": (21.0367, 105.8018),
-    "cầu giấy": (21.0288, 105.8022),
+    
 
     # Other venues
     "khu vui chơi nhà chen - ước mơ xanh": (21.0378, 105.8321),
     "nhà chen": (21.0378, 105.8321),
+    "làng văn hóa": (21.0520, 105.7600),
 }
 
 

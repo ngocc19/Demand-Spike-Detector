@@ -430,8 +430,8 @@ class BackstageEventSource(EventSource):
         except (ValueError, AttributeError):
             return True
 
-        if self._start_date is not None and record_date < self._start_date:
+        if self._start_date is not None and record_date < self._start_date.date():
             return False
-        if self._end_date is not None and record_date > self._end_date:
+        if self._end_date is not None and record_date > self._end_date.date():
             return False
         return True

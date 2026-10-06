@@ -93,7 +93,9 @@ def main() -> None:
                 result["updated"],
             )
             logger.info("CSV: %s (%d records)", result["csv_path"], result["csv_records"])
-            logger.info("Workbook: %s (%d sheets)", result["workbook_path"], result["workbook_sheets"])
+            sheets_info = result["workbook_sheets"]
+            num_sheets = len(sheets_info) if isinstance(sheets_info, dict) else sheets_info
+            logger.info("Workbook: %s (%d sheets)", result["workbook_path"], num_sheets)
         except Exception as e:
             logger.exception("Failed to run source '%s': %s", source_name, e)
             if not args.source:

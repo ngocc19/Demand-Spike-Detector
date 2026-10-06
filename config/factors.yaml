@@ -5,7 +5,7 @@ pipeline:
 
 events:
   csv_output_file: event.csv
-  workbook_output_file: event.xlsx
+  workbook_output_file: events.xlsx
   sheet_classification:
     football:
       type_values: [football]
@@ -32,8 +32,8 @@ events:
       type_values: []
       keywords: []
   event_date_window:
-    start_date: "2026-04-13"
-    end_date: "2026-09-23"
+    start_date: "2026-06-29"
+    end_date: "2026-09-28"
   attendance_estimation:
     fill_missing_with_heuristic: false
     # These are observed figures reported after the fixtures took place, not estimates.
@@ -151,8 +151,8 @@ events:
       enabled: true
       search_url: https://api-v2.ticketbox.vn/search/v2/events
       category: music
-      from_date: "2026-04-13"
-      to_date: "2026-09-22"
+      from_date: "2026-06-29"
+      to_date: "2026-09-28"
       page_size: 100
       max_pages: 5
       timezone: Asia/Ho_Chi_Minh
@@ -166,8 +166,8 @@ events:
       # Ticketbox's category=festival search is empty; festival.py searches the
       # public catalogue and verifies Hanoi/location from each detail page.
       search_url: https://api-v2.ticketbox.vn/search/v2/events
-      from_date: "2026-04-13"
-      to_date: "2026-09-22"
+      from_date: "2026-06-29"
+      to_date: "2026-09-28"
       page_size: 100
       max_pages: 5
       timezone: Asia/Ho_Chi_Minh
