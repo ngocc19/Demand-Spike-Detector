@@ -10,87 +10,73 @@ This document describes the Weather Ensemble System implemented for the Demand S
 - **Type**: Real-time API
 - **URL**: https://openweathermap.org/
 - **API**: Current Weather + 5 Day/3 Hour Forecast
-- **Free Tier**: 60 calls/minute
-- **Update Frequency**: Real-time
 - **Code**: `src/pipeline/plugins/owm_plugin.py`
 
 ### 2. Visual Crossing Weather (VCW)
 - **Type**: Real-time API + Historical
 - **URL**: https://www.visualcrossing.com/
 - **API**: Timeline API
-- **Free Tier**: 1,000 records/day
-- **Update Frequency**: Real-time
-- **Historical Data**: Excellent for Phase 0 backfill
 - **Code**: `src/pipeline/plugins/vcw_plugin.py`
 
 ### 3. HSDC (Hanoi Drainage Company)
 - **Type**: Rainfall + Flood Ground Truth
-- **URL**: https://maps.hsdc.vn/ (Rainfall Maps)
-- **Flood API**: https://thoatnuochanoi.vn/ungngap/api/flood/getflood
-- **Data**: Real-time rainfall and flood monitoring
-- **Stations**: 45 flood monitoring points across Hanoi
-- **Update Frequency**: Every 15 minutes
-- **Code**: `src/pipeline/plugins/hsdc_plugin.py` (Rainfall)
-- **Code**: `src/pipeline/plugins/hsdc_flood_plugin.py` (Flood)
+- **URL**: https://thoatnuochanoi.vn/
+- **APIs**:
+  - Rainfall: `https://thoatnuochanoi.vn/luongmua/api/getAllData`
+  - Flood: `https://thoatnuochanoi.vn/ungngap/api/flood/getflood`
+- **Code**: `src/pipeline/plugins/hsdc_plugin.py`, `hsdc_flood_plugin.py`
 
 ### 4. NCHMF (National Center for Hydro-Meteorological Forecasting)
 - **Type**: Official Forecast + Warnings
 - **URL**: https://nchmf.gov.vn/
-- **Hanoi Station**: https://nchmf.gov.vn/Kttvsite/vi-VN/1/ha-noi-w29.html
-- **Data**: Official forecasts, storm warnings
-- **Update Frequency**: Every 3 hours
-- **Code**: `src/pipeline/plugins/nchmf_plugin.py`
+- **Code**: `src/pipeline/plugins/nchmf_plugin.py`, `nchmf_api_plugin.py`
 
 ## Ensemble Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Weather Ensemble Plugin                         │
-│                 (weather_ensemble_plugin.py)                      │
+│                   Weather Ensemble System                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
-│  │   OWM   │  │   VCW   │  │  HSDC   │  │  NCHMF  │            │
-│  │  Plugin │  │  Plugin │  │  Plugin │  │  Plugin │            │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘            │
-│       │            │            │            │                   │
-│       └────────────┴────────────┴────────────┘                   │
-│                          │                                      │
-│                    ┌──────▼──────┐                               │
-│                    │   Fetch     │                               │
-│                    │   All Data   │                               │
-│                    └──────┬──────┘                               │
-│                          │                                      │
-│                    ┌──────▼──────────────────┐                  │
-│                    │ WeatherEnsembleAggregator │                  │
-│                    │   (weather_ensemble.py)   │                  │
-│                    │                          │                  │
-│                    │ Branch 1: Continuous     │                  │
-│                    │   - MAE-based weighting   │                  │
-│                    │                          │                  │
-│                    │ Branch 2: Classification │                  │
-│                    │   - F1-score voting      │                  │
-│                    │                          │                  │
-│                    │ Common:                   │                  │
-│                    │   - Time-decay           │                  │
-│                    │   - Circuit breaker      │                  │
-│                    └──────────────────────────┘                  │
-│                               │                                   │
-│                    ┌──────────▼──────────┐                       │
-│                    │  Ensemble Result    │                       │
-│                    │  - Values           │                       │
-│                    │  - Weights          │                       │
-│                    │  - Confidence       │                       │
-│                    └─────────────────────┘                       │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │
+│  │   OWM   │  │   VCW   │  │  HSDC   │  │  NCHMF  │          │
+│  │  Plugin │  │  Plugin │  │  Plugin │  │  Plugin │          │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘          │
+│       │             │            │            │                 │
+│       └─────────────┴────────────┴────────────┘                 │
+│                            │                                    │
+│                            ▼                                    │
+│                   ┌─────────────────┐                          │
+│                   │    Weather      │                          │
+│                   │    Ensemble     │                          │
+│                   │   Aggregator    │                          │
+│                   └────────┬────────┘                          │
+│                            │                                    │
+│              ┌─────────────┼─────────────┐                    │
+│              │             │             │                       │
+│              ▼             ▼             ▼                       │
+│      ┌───────────┐ ┌───────────┐ ┌───────────┐              │
+│      │ Continuous │ │  Binary   │ │  Time    │              │
+│      │ Ensemble   │ │ Ensemble  │ │  Decay   │              │
+│      └───────────┘ └───────────┘ └───────────┘              │
+│                            │                                    │
+│                            ▼                                    │
+│                   ┌─────────────────┐                          │
+│                   │  Ensemble       │                          │
+│                   │  Result         │                          │
+│                   │  (Values,       │                          │
+│                   │   Weights,       │                          │
+│                   │   Confidence)    │                          │
+│                   └─────────────────┘                          │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Mathematical Framework
 
-### Branch 1: Continuous Variables (Temperature, Humidity, Precipitation)
+### Continuous Variables (Temperature, Humidity, Precipitation)
 
-**Step 1**: Calculate MAE for each source in window T days
+**Step 1**: Calculate MAE for each source
 ```
 E_i = MAE(y_true, y_i)
 ```
@@ -100,7 +86,7 @@ E_i = MAE(y_true, y_i)
 w_i = E_i^(-1) / Σ(E_j^(-1))
 ```
 
-### Branch 2: Binary Classification (Storm, Thunderstorm)
+### Binary Classification (Storm, Thunderstorm)
 
 **Step 1**: Confusion Matrix → Precision, Recall
 ```
@@ -118,9 +104,9 @@ F1_i = 2 × P_i × R_i / (P_i + R_i)
 w_i = F1_i / Σ(F1_j)
 ```
 
-### Common Steps (Applied to Both Branches)
+### Common Steps
 
-**Step 3**: Time-Decay Function
+**Time-Decay Function:**
 ```
 w'_i = w_i × e^(-λ × Δt_i)
 ```
@@ -128,7 +114,7 @@ Where:
 - λ = decay rate (default: 0.1)
 - Δt_i = data staleness in hours
 
-**Step 4**: Circuit Breaker & Normalization
+**Circuit Breaker & Normalization:**
 ```
 S_i = 1 if source is HEALTHY or TIMEOUT
 S_i = 0 if source is FAILED
@@ -136,7 +122,7 @@ S_i = 0 if source is FAILED
 w*_i = (S_i × w'_i) / Σ(S_j × w'_j)
 ```
 
-**Step 5**: Ensemble Output
+**Ensemble Output:**
 ```
 Y_final = Σ(w*_i × Y_i)
 ```
@@ -149,9 +135,47 @@ Y_final = Σ(w*_i × Y_i)
 | TIMEOUT | 1 | Data is stale | Use with time-decay reduced weight |
 | FAILED | 0 | API down/error | Exclude from ensemble |
 
+## Weather Code Impact Mapping
+
+| Code Range | Description | Impact |
+|------------|-------------|--------|
+| 0-3 | Clear/Cloudy | 0.0 |
+| 45-48 | Fog | 0.2 |
+| 51-55 | Drizzle | 0.4 |
+| 61-67 | Rain | 0.6 |
+| 80-82 | Rain showers | 0.8 |
+| 95-99 | Thunderstorm | 1.0 |
+
+## HSDC API Details
+
+### Rainfall API
+
+**Endpoint:** `https://thoatnuochanoi.vn/luongmua/api/getAllData`
+
+**Note:** Response is double-encoded JSON - requires 2 levels of parsing.
+
+```python
+# Response structure
+layer1 = json.loads(response.text)          # Parse response
+layer2 = layer1.get('data', {})             # Get inner data
+tram = json.loads(layer2['tram'])           # Parse stations (JSON string)
+rainfall = json.loads(layer2['data'])       # Parse rainfall (JSON string)
+```
+
+### Flood API
+
+**Endpoint:** `https://thoatnuochanoi.vn/ungngap/api/flood/getflood`
+
+**Flood Level from Icon:**
+- `Flood_level0.png` = No flooding (level 0)
+- `Flood_level1.png` = Low (10cm)
+- `Flood_level2.png` = Medium (25cm)
+- `Flood_level3.png` = High (50cm)
+- `Flood_level4.png` = Severe (100cm)
+
 ## Usage
 
-### 1. Using Individual Plugins
+### Using Individual Plugins
 
 ```python
 from src.pipeline.plugins.owm_plugin import OWMFactorPlugin
@@ -171,7 +195,7 @@ hsdc = HSDCFactorPlugin({})
 hsdc_data = hsdc.fetch()
 ```
 
-### 2. Using Ensemble Plugin
+### Using Ensemble Plugin
 
 ```python
 from src.pipeline.plugins.weather_ensemble_plugin import WeatherEnsemblePlugin
@@ -188,12 +212,9 @@ config = {
 
 ensemble = WeatherEnsemblePlugin(config)
 result = ensemble.fetch()
-
-print(result)
-# Returns ensemble values with confidence scores
 ```
 
-### 3. Using Ensemble Aggregator Directly
+### Using Ensemble Aggregator Directly
 
 ```python
 from src.pipeline.weather_ensemble import WeatherEnsembleAggregator, EnsembleConfig
@@ -212,140 +233,30 @@ result = aggregator.ensemble_classification(
     variable_name='storm',
     source_values={'OWM': 0.3, 'VCW': 0.5, 'NCHMF': 0.85}
 )
-
-print(f"Ensemble Value: {result.ensemble_value}")
-print(f"Active Sources: {result.active_sources_count}/4")
-print(f"Weights: {result.source_weights}")
 ```
 
-## Configuration
+## Output Schema
 
-### factors.yaml
+The ensemble produces data with the following fields:
 
-```yaml
-factors:
-  - name: weather_ensemble
-    enabled: true
-    schedule: "0 * * * *"
-    config:
-      lambda_decay: 0.15
-      timeout_threshold_hours: 2.0
-      sources:
-        owm:
-          api_key: ${OPENWEATHERMAP_API_KEY}
-          city: Hanoi,VN
-        vcw:
-          api_key: ${VISUALCROSSING_API_KEY}
-          location: Hanoi,Vietnam
-        hsdc:
-          timeout_seconds: 15
-        nchmf:
-          timeout_seconds: 20
-```
-
-### Environment Variables
-
-```bash
-# API Keys
-export OPENWEATHERMAP_API_KEY=your_key_here
-export VISUALCROSSING_API_KEY=your_key_here
-```
-
-## HSDC Maps - Finding API Endpoints
-
-### Flood Data API (CONFIRMED WORKING)
-```
-Endpoint: https://thoatnuochanoi.vn/ungngap/api/flood/getflood
-Method: GET
-Response: JSON
-```
-
-**Response Structure:**
-```json
-{
-    "Code": 1,
-    "Content": [
-        {
-            "TramId": "3",
-            "TenTram": "Cao Bá Quát (cổng Cty Môi trường đô thị)",
-            "Lng": "105.839500",
-            "Lat": "21.030180",
-            "Icon": "202608311105287262087_Flood_level1.png"
-        },
-        ...
-    ]
-}
-```
-
-**Flood Level from Icon:**
-- `Flood_level0.png` = No flooding (level 0)
-- `Flood_level1.png` = Low (10cm)
-- `Flood_level2.png` = Medium (25cm)
-- `Flood_level3.png` = High (50cm)
-- `Flood_level4.png` = Severe (100cm)
-
-**45 Monitoring Stations include:**
-- Cầu Giấy, Thanh Xuân, Hoàng Mai
-- Đống Đa, Hai Bà Trưng
-- Tây Hồ, Ngọc Hồi
-- And 38 more locations
-
-### Other HSDC Endpoints
-
-#### Rainfall API (CONFIRMED WORKING)
-```
-Endpoint: https://thoatnuochanoi.vn/luongmua/api/getAllData
-Method: POST
-Response: JSON (double-encoded)
-```
-
-**Response Structure (3 layers):**
-```json
-Layer 1: {"code": 1, "data": {...}}
-Layer 2: {"tram": "[{...}]", "data": "[{...}]"}  <- JSON strings
-Layer 3: tram = [{station objects}]
-Layer 3: data = [{rainfall records}]
-```
-
-**Station fields:**
-```json
-{"Id": 52, "TenTram": "HOÀN KIẾM", "DiaChi": "167 Phùng Hưng"}
-```
-
-**Rainfall fields:**
-```json
-{
-    "Id": 1,
-    "TramId": 11,
-    "LuongMua_BD": 0.1,      // Before (mm)
-    "ThoiGian_BD": "2026-09-24T03:13:20",
-    "LuongMua_HT": 0.1,      // Current (mm)
-    "ThoiGian_HT": "2026-09-24T03:13:20",
-    "LuongMua_Tr": 0.1,      // Total accumulated (mm)
-    "ThoiGian_Tr": "2026-09-24T03:13:20",
-    "AC": 0
-}
-```
-
-**Processing Logic:**
 ```python
-# Double JSON parse required
-layer1 = json.loads(response.text)          # Parse response
-layer2 = layer1.get('data', {})             # Get inner data
-tram = json.loads(layer2['tram'])           # Parse stations (JSON string)
-rainfall = json.loads(layer2['data'])       # Parse rainfall (JSON string)
-```
-
-**48 Stations available** including:
-- Hoàn Kiếm, Thái Hà, Phạm Ngọc Thạch
-- Nguyễn Trãi, Cầu Giấy, Keangnam
-- And more...
-
-## Testing
-
-Run all weather tests:
-```bash
-pytest tests/test_weather_ensemble.py tests/test_weather_plugins.py -v
+result = {
+    'h3_index': '88415cb4e5fffff',
+    'datetime': '2026-09-25 14:00:00',
+    'temp_c': 32.5,
+    'humidity_pct': 75,
+    'wind_speed_kmh': 15.0,
+    'rain_mm': 5.2,
+    'weather_code': 61,
+    'weather_desc': 'light rain',
+    'vcw_temp_c': 32.8,
+    'vcw_rain_mm': 4.8,
+    'ensemble_rain_mm': 5.0,
+    'ensemble_storm_prob': 0.35,
+    'flood_level': 1,
+    'nchmf_warning': False,
+    'has_hsdc_station': True,
+}
 ```
 
 ## Files Structure
@@ -353,23 +264,25 @@ pytest tests/test_weather_ensemble.py tests/test_weather_plugins.py -v
 ```
 src/pipeline/
 ├── weather_ensemble.py          # Core ensemble logic
+├── weather_ensemble_plugin.py    # Main ensemble plugin
 └── plugins/
-    ├── owm_plugin.py            # OpenWeatherMap plugin
-    ├── vcw_plugin.py            # Visual Crossing plugin
-    ├── nchmf_plugin.py          # NCHMF Hanoi plugin
-    ├── hsdc_plugin.py           # HSDC rainfall plugin
-    └── weather_ensemble_plugin.py # Main ensemble plugin
+    ├── owm_plugin.py            # OpenWeatherMap
+    ├── vcw_plugin.py            # Visual Crossing
+    ├── nchmf_plugin.py          # NCHMF Web Crawler
+    ├── nchmf_api_plugin.py     # NCHMF API
+    ├── hsdc_plugin.py          # HSDC Rainfall
+    └── hsdc_flood_plugin.py    # HSDC Flood
 
 tests/
-├── test_weather_ensemble.py      # Ensemble unit tests
-└── test_weather_plugins.py      # Plugin unit tests
+├── test_weather_ensemble.py      # Ensemble tests
+└── test_weather_plugins.py      # Plugin tests
 ```
 
 ## Phase 0 (Backfill) vs Phase 1 (Real-time)
 
 ### Phase 0: Backfill
 - Use VCW historical API for bulk historical data
-- Use HSDC for rainfall ground truth (if historical available)
+- Use HSDC for rainfall ground truth
 - NCHMF may have limited historical data
 - OWM supports `past_days` parameter
 
@@ -381,11 +294,9 @@ tests/
 
 ## Notes
 
-1. **API Keys**: Get free API keys from:
-   - OWM: https://openweathermap.org/api
-   - VCW: https://www.visualcrossing.com/weather-api
+1. **HSDC API**: Response is double-encoded JSON - requires special parsing logic.
 
-2. **HSDC Maps**: The actual API endpoints must be discovered via DevTools as they may change.
+2. **HSDC Circuit Breaker**: Not all hexagons have HSDC stations. Hexes without stations get S=0 for HSDC source.
 
 3. **NCHMF**: Official Vietnamese weather agency. Contains storm warnings (Cảnh báo giông, lốc, sét, mưa đá).
 
