@@ -9,6 +9,22 @@
 
 factors:
   # ============================================================
+  # TRAFFIC (HERE)
+  # Source: HERE Routing API with Traffic
+  # Schedule: Every 30 minutes
+  # ============================================================
+  - name: here_traffic
+    type: api
+    source: here
+    schedule: "*/30 * * * *"
+    enabled: true
+    config:
+      api_key_env: HERE_API_KEY
+      data_lake_dir: "data/traffic"
+      cache_ttl_minutes: 15
+      # 35 anchor points defined in plugin code
+
+  # ============================================================
   # WEATHER
   # Source: Open-Meteo API (FREE, no API key required)
   # Schedule: Every hour
