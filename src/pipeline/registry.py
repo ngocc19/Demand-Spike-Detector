@@ -132,11 +132,15 @@ from .plugins.holiday_plugin import HolidayFactorPlugin
 from .plugins.owm_plugin import OWMFactorPlugin
 from .plugins.vcw_plugin import VCWFactorPlugin
 from .plugins.nchmf_plugin import NCHMFFactorPlugin
+from .plugins.nchmf_api_plugin import NCHMFApiPlugin
 from .plugins.hsdc_plugin import HSDCFactorPlugin
 from .plugins.weather_ensemble_plugin import WeatherEnsemblePlugin
 
 # HSDC flood plugin
 from .plugins.hsdc_flood_plugin import HSDCFloodPlugin
+
+# HERE traffic plugin
+from .plugins.here_traffic_plugin import HERETrafficPlugin
 
 # Register plugins with registry
 PluginRegistry.register("event")(EventFactorPlugin)
@@ -146,8 +150,12 @@ PluginRegistry.register("holiday")(HolidayFactorPlugin)
 PluginRegistry.register("owm")(OWMFactorPlugin)
 PluginRegistry.register("vcw")(VCWFactorPlugin)
 PluginRegistry.register("nchmf")(NCHMFFactorPlugin)
+PluginRegistry.register("nchmf_api")(NCHMFApiPlugin)
 PluginRegistry.register("hsdc")(HSDCFactorPlugin)
 PluginRegistry.register("weather_ensemble")(WeatherEnsemblePlugin)
 
 # Register HSDC flood plugin
 PluginRegistry.register("hsdc_flood")(HSDCFloodPlugin)
+
+# Register HERE traffic plugin
+PluginRegistry.register("here_traffic")(HERETrafficPlugin)
