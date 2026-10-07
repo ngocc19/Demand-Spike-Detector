@@ -146,13 +146,17 @@ class WeatherEnsemblePlugin(BaseFactorPlugin):
                 from .owm_plugin import OWMFactorPlugin
                 from .vcw_plugin import VCWFactorPlugin
                 from .hsdc_plugin import HSDCFactorPlugin
-                from .nchmf_plugin import NCHMFFactorPlugin
+                from .nchmf_api_plugin import NCHMFApiPlugin
 
                 self._source_instances = {
                     'OWM': OWMFactorPlugin(self.sources_config.get('owm', {})),
                     'VCW': VCWFactorPlugin(self.sources_config.get('vcw', {})),
                     'HSDC': HSDCFactorPlugin(self.sources_config.get('hsdc', {})),
-                    'NCHMF': NCHMFFactorPlugin(self.sources_config.get('nchmf', {})),
+                    # Use new NCHMF API plugin (real API + HTML scraping)
+                    'NCHMF': NCHMFApiPlugin(self.sources_config.get('nchmf_api', {
+                        'hanoi_only': True,
+                        'fetch_warnings': True,
+                    })),
                 }
             except ImportError as e:
                 logger.error(f"Failed to import source plugins: {e}")
