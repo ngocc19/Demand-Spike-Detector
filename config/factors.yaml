@@ -3,6 +3,9 @@ pipeline:
   timezone: Asia/Ho_Chi_Minh
   data_dir: data
 
+# ============================================================
+# EVENT CONFIGURATION (from feature/event_slot)
+# ============================================================
 events:
   csv_output_file: event.csv
   workbook_output_file: events.xlsx
@@ -36,8 +39,6 @@ events:
     end_date: "2026-09-28"
   attendance_estimation:
     fill_missing_with_heuristic: false
-    # These are observed figures reported after the fixtures took place, not estimates.
-    # The event's source_url remains the VFF fixture notice; this URL records attendance evidence.
     reported_attendance_overrides:
       - source: vff_football
         title: "Việt Nam vs Singapore"
@@ -59,9 +60,6 @@ events:
         start_at_utc: "2026-08-26T13:00:00Z"
         attendance: 40000
         source_url: "https://tuoitre.vn/cdv-mo-hoi-truoc-san-my-dinh-cho-viet-nam-dau-thai-lan-100260826160335574.htm"
-      # These values are attendance figures reported by the linked articles.
-      # Approximate wording (khoảng/gần) is retained in the source evidence;
-      # no capacity-only or sold-out-only concert receives an attendance value.
       - source: ticketbox_concert
         title: "PHAO CỨU SINH CONCERT - HƯƠNG TRÀM"
         start_at_utc: "2026-08-01T13:00:00Z"
@@ -87,7 +85,6 @@ events:
         start_at_utc: "2026-09-19T10:00:00Z"
         attendance: 5000
         source_url: "https://vov.vn/van-hoa/am-nhac/hang-ngan-khan-gia-chay-cung-boc-fest-2026-tai-nha-may-xe-lua-gia-lam-post1334249.vov"
-      # Only stated numeric participation figures are retained for festivals.
       - source: lehoivietnam_hanoi
         title: "Chương trình nghệ thuật Âm vang Tổ quốc 2026"
         start_at_utc: "2026-04-27T17:00:00Z"
@@ -163,8 +160,6 @@ events:
       scope_city: hanoi
     ticketbox_festival:
       enabled: true
-      # Ticketbox's category=festival search is empty; festival.py searches the
-      # public catalogue and verifies Hanoi/location from each detail page.
       search_url: https://api-v2.ticketbox.vn/search/v2/events
       from_date: "2026-06-29"
       to_date: "2026-09-28"
@@ -187,13 +182,10 @@ events:
       scope_city: hanoi
     official_hanoi_other:
       enabled: true
-      # Add authoritative site listings here; no code change is needed for a new source.
       listing_sources:
         - name: Hanoi Department of Education and Training
           listing_url: https://www.hanoi.edu.vn/
           allowed_hosts: [www.hanoi.edu.vn, hanoi.edu.vn]
-          # Keep only activities likely to create shared-trip demand.
-          # Field trips and routine school administration are intentionally excluded.
           keywords: ["khai giảng", "tựu trường", "workshop", "hội thảo", "tập huấn"]
           excluded_title_prefixes: ["v/v", "công văn", "thông báo"]
       timezone: Asia/Ho_Chi_Minh
@@ -202,3 +194,79 @@ events:
       full_scan_every_runs: 4
       user_agent: DemandSpikeDetector/0.1
       scope_city: hanoi
+
+# ============================================================
+# FACTORS (from feature/data-pipeline)
+# ============================================================
+factors:
+  - name: here_traffic
+    type: api
+    source: here
+    schedule: "*/30 * * * *"
+    enabled: true
+    config:
+      api_key_env: HERE_API_KEY
+      data_lake_dir: "data/traffic"
+      cache_ttl_minutes: 15
+
+  - name: weather
+    type: api
+    source: open_meteo
+    schedule: "0 * * * *"
+    enabled: true
+    config:
+      latitude: 21.0285
+      longitude: 105.8542
+      radius_km: 30
+      timezone: "Asia/Ho_Chi_Minh"
+      forecast_days: 7
+      past_days: 0
+
+  - name: flood
+    type: rss
+    source: vnexpress_rss
+    schedule: "*/15 * * * *"
+    enabled: true
+    config:
+      rss_sources:
+        - "https://vnexpress.net/rss/thoi-su.rss"
+      max_entries: 50
+      max_age_hours: 24
+      geocoding_api: nominatim
+      latitude: 21.0285
+      longitude: 105.8542
+
+  - name: event
+    type: csv
+    source: manual
+    schedule: "0 23 * * *"
+    enabled: true
+    config:
+      csv_path: "data/events.csv"
+      impact_radius: 3
+      venue_coords:
+        svd_my_dinh: [21.0285, 105.8195]
+        thong_nhat: [10.7795, 106.7312]
+        arena: [21.0065, 105.8195]
+        ice: [21.0150, 105.7850]
+
+  - name: holiday
+    type: file
+    source: static
+    schedule: "0 0 1 1 *"
+    enabled: true
+    config:
+      holiday_file: "data/holidays.csv"
+      tet_date: "2025-01-29"
+      impact_radius: 50
+
+backfill:
+  weather:
+    past_days: 60
+  flood:
+    use_wayback_machine: true
+    max_archive_days: 90
+  events:
+    manual_collection: true
+  holidays:
+    include_tet_phases: true
