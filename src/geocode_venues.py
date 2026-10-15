@@ -68,14 +68,52 @@ VENUE_COORDINATES: dict[str, tuple[float, float]] = {
     "vietnam exposition center": (21.2219, 105.8547),
     "trung tâm triển lãm việt nam": (21.2219, 105.8547),
     "trung tâm triển lãm việt nam (vec)": (21.2219, 105.8547),
+    "Trung tâm triển lãm Việt Nam (VEC) - SUNSET ZONE": (21.2219, 105.8547),
 
     # Schools (approximate)
     "trường thcs trần duy hưng": (21.0058, 105.7989),
     "trường tiểu học ngô thì nhậm": (21.0189, 105.8256),
     "trường thcs hoàng liệt": (20.9867, 105.8356),
+    "trường tiểu học long biên": (21.0470, 105.8920),
+    "trường bồi dưỡng cán bộ giáo dục hà nội": (21.0250, 105.8200),
     "đại học sư phạm hà nội": (21.0367, 105.8018),
     "đh sư phạm hà nội": (21.0367, 105.8018),
-    
+
+    # SOL 8 Live Stage venues
+    "sol 8 live stage": (21.0285, 105.8527),
+    "sol 8 live stage hà nội": (21.0285, 105.8527),
+    "sol 8": (21.0285, 105.8527),
+    "sol 8 - live stage": (21.0285, 105.8527),
+
+    # Trung Tâm Nghệ Thuật Âu Cơ
+    "trung tâm nghệ thuật âu cơ": (21.0285, 105.8527),
+    "trung tâm nghệ thuật âu cơ": (21.0285, 105.8527),
+
+    # Công viên Thiên văn học
+    "công viên thiên văn học": (21.0285, 105.8527),
+
+    # Bảo tàng Lịch sử Quân sự Việt Nam
+    "bảo tàng lịch sử quân sự việt nam": (21.0285, 105.8527),
+    "bảo tàng lịch sử quân sự": (21.0285, 105.8527),
+
+    # Sheraton Hanoi
+    "elite ballroom sheraton": (21.0317, 105.8036),
+    "elite ballroom - sheraton": (21.0317, 105.8036),
+    "sheraton hanoi west": (21.0317, 105.8036),
+    "sheraton hanoi hotel": (21.0317, 105.8036),
+
+    # Benaras Sutra (Indian restaurant)
+    "benaras sutra": (21.0285, 105.8527),
+    "benaras sutra indian restaurant": (21.0285, 105.8527),
+
+    # Exhibition - VEC
+    "trung tâm triển lãm vec": (21.2219, 105.8547),
+    "vec exhibition center": (21.2219, 105.8547),
+
+    # Vườn hoa Hàng Trống
+    "không gian vườn hoa hàng trống": (21.0285, 105.8527),
+    "vườn hoa hàng trống": (21.0285, 105.8527),
+    "hàng trống": (21.0285, 105.8527),
 
     # Other venues
     "khu vui chơi nhà chen - ước mơ xanh": (21.0378, 105.8321),

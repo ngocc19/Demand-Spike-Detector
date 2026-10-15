@@ -19,9 +19,6 @@ from .plugins.football import VffFootballEventSource, VpfFootballEventSource
 from .plugins.concert import TicketboxConcertEventSource
 from .plugins.festival import LeHoiVietNamEventSource, TicketboxFestivalEventSource
 from .plugins.other import OfficialOtherEventSource
-from .plugins.backstage import BackstageEventSource
-from .plugins.ticketbox_comedy import TicketboxComedyEventSource
-from .plugins.ticketbox_all import TicketboxAllEventSource
 
 
 # ============================================================
@@ -35,9 +32,6 @@ EVENT_SOURCE_TYPES = {
     "ticketbox_festival": TicketboxFestivalEventSource,
     "lehoivietnam_hanoi": LeHoiVietNamEventSource,
     "official_hanoi_other": OfficialOtherEventSource,
-    "backstage_vn": BackstageEventSource,
-    "ticketbox_comedy": TicketboxComedyEventSource,
-    "ticketbox_all": TicketboxAllEventSource,
 }
 
 

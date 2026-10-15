@@ -1,0 +1,1086 @@
+{
+  "saved_at": "2026-10-15T14:45:39.110870",
+  "total_events": 45,
+  "states": [
+    {
+      "event_id": "van_mieu:134",
+      "source": "van_mieu",
+      "title": "TRƯNG BÀY “950 NĂM QUỐC TỬ GIÁM THĂNG LONG (1076 – 2026)” TẠI LÀNG VĂN HÓA – DU LỊCH CÁC DÂN TỘC VIỆT NAM",
+      "venue": "Làng Văn hóa – Du lịch các dân tộc Việt Nam",
+      "start_at": "2026-10-11T02:00:00+00:00",
+      "end_at": null,
+      "category": "cultural_event",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vanmieu.gov.vn/vi/events/event-calendar/ongoing-events/TR%C6%AFNG-B%C3%80Y-%E2%80%9C950-N%C4%82M-QU%E1%BB%90C-T%E1%BB%AC-GI%C3%81M-TH%C4%82NG-LONG-(1076-%E2%80%93-2026)%E2%80%9D-T%E1%BA%A0I-L%C3%80NG-V%C4%82N-H%C3%93A-%E2%80%93-DU-L%E1%BB%8ACH-C%C3%81C-D%C3%82N-T%E1%BB%98C-VI%E1%BB%86T-NAM"
+      ],
+      "current_source_url": "https://vanmieu.gov.vn/vi/events/event-calendar/ongoing-events/TR%C6%AFNG-B%C3%80Y-%E2%80%9C950-N%C4%82M-QU%E1%BB%90C-T%E1%BB%AC-GI%C3%81M-TH%C4%82NG-LONG-(1076-%E2%80%93-2026)%E2%80%9D-T%E1%BA%A0I-L%C3%80NG-V%C4%82N-H%C3%93A-%E2%80%93-DU-L%E1%BB%8ACH-C%C3%81C-D%C3%82N-T%E1%BB%98C-VI%E1%BB%86T-NAM",
+      "confirmed_by_sources": [
+        "van_mieu"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26507",
+      "source": "ticketbox_concert",
+      "title": "LIVE CONCERT - SKYNOTE THE REFLECTION DAY 2 - QUỐC THIÊN",
+      "venue": "Trung tâm triển lãm Việt Nam (VEC) - SUNSET ZONE",
+      "start_at": "2026-11-29T09:30:00+00:00",
+      "end_at": "2026-11-29T13:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/quoc-thien-sky-note-2026-26507"
+      ],
+      "current_source_url": "https://ticketbox.vn/quoc-thien-sky-note-2026-26507",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26364",
+      "source": "ticketbox_concert",
+      "title": "THE BROTHERS | Đỗ Hoàng Hiệp x Tăng Phúc x Hà Lê x Cheng x Bình Văn Band",
+      "venue": "Trung Tâm Nghệ Thuật Âu cơ",
+      "start_at": "2026-10-31T13:00:00+00:00",
+      "end_at": "2026-10-31T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/the-brothers-26364"
+      ],
+      "current_source_url": "https://ticketbox.vn/the-brothers-26364",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26333",
+      "source": "ticketbox_concert",
+      "title": "Mr Siro - Encore Extended - Ai Cũng Giấu Trong Lòng Tảng Băng - Hà Nội",
+      "venue": "Trung Tâm Hội Nghị Quốc Gia",
+      "start_at": "2026-11-01T12:00:00+00:00",
+      "end_at": "2026-11-01T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/mr-siro-fan-concert-ha-noi-encore-26333"
+      ],
+      "current_source_url": "https://ticketbox.vn/mr-siro-fan-concert-ha-noi-encore-26333",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26710",
+      "source": "ticketbox_concert",
+      "title": "(S)TRONG 'DỊ KIỀU' SHOW 2026: ĐẾN GIÂY CUỐI CÙNG",
+      "venue": "SOL 8 Live Stage Hà Nội",
+      "start_at": "2026-11-07T12:30:00+00:00",
+      "end_at": "2026-11-07T14:30:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/strong-di-kieu-show-2026-den-giay-cuoi-cung-26710"
+      ],
+      "current_source_url": "https://ticketbox.vn/strong-di-kieu-show-2026-den-giay-cuoi-cung-26710",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26691",
+      "source": "ticketbox_concert",
+      "title": "HBAShow: BẠCH CÔNG KHANH - BIRTHDAY SHOW",
+      "venue": "SOL 8 - LIVE STAGE",
+      "start_at": "2026-11-21T13:00:00+00:00",
+      "end_at": "2026-11-21T16:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/hba-bach-cong-khanh-birthday-26691"
+      ],
+      "current_source_url": "https://ticketbox.vn/hba-bach-cong-khanh-birthday-26691",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26663",
+      "source": "ticketbox_concert",
+      "title": "HBAShow: PHONG THANH ĐÔI BỜ - Nguyễn Đình Tuấn Dũng - Văn Mai Hương",
+      "venue": "SOL 8 - LIVE STAGE",
+      "start_at": "2026-11-14T13:00:00+00:00",
+      "end_at": "2026-11-14T16:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/hbashow-phong-thanh-doi-bo-26663"
+      ],
+      "current_source_url": "https://ticketbox.vn/hbashow-phong-thanh-doi-bo-26663",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26688",
+      "source": "ticketbox_concert",
+      "title": "DIễm Xưa Giữa Mùa Thu Hà Nội",
+      "venue": "Nhà Hát Âu Cơ",
+      "start_at": "2026-11-13T12:30:00+00:00",
+      "end_at": "2026-11-13T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/diem-xua-giua-mua-thu-ha-noi-26688"
+      ],
+      "current_source_url": "https://ticketbox.vn/diem-xua-giua-mua-thu-ha-noi-26688",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26675",
+      "source": "ticketbox_concert",
+      "title": "WE FEST 2026",
+      "venue": "Trung tâm Triển lãm VEC",
+      "start_at": "2026-10-17T12:00:00+00:00",
+      "end_at": "2026-10-17T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/we-fest-2026-26675"
+      ],
+      "current_source_url": "https://ticketbox.vn/we-fest-2026-26675",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26657",
+      "source": "ticketbox_concert",
+      "title": "MẮT NHẮM MẮT MỞ CONCERT - DAY 3 (HÀ NỘI)",
+      "venue": "Trung tâm triển lãm Việt Nam (VEC) - SÂN BẮC",
+      "start_at": "2026-11-01T11:30:00+00:00",
+      "end_at": "2026-11-01T14:30:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/mat-nham-mat-mo-concert-day-3-26657"
+      ],
+      "current_source_url": "https://ticketbox.vn/mat-nham-mat-mo-concert-day-3-26657",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26645",
+      "source": "ticketbox_concert",
+      "title": "[Hà Nội] Những Thành Phố Mơ Màng Year End 2026",
+      "venue": "Trung tâm Triển lãm Việt Nam (VEC)",
+      "start_at": "2027-01-17T09:00:00+00:00",
+      "end_at": "2027-01-17T15:30:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/ntpmm-year-end-hanoi-2026-26645"
+      ],
+      "current_source_url": "https://ticketbox.vn/ntpmm-year-end-hanoi-2026-26645",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26624",
+      "source": "ticketbox_concert",
+      "title": "The Aura - Không Thể Thay Thế: Isaac - Jun Phạm - Will - S.T Sơn Thạch",
+      "venue": "Cung Điền Kinh Mỹ Đình",
+      "start_at": "2026-11-28T12:30:00+00:00",
+      "end_at": "2026-11-28T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/the-aura-khong-the-thay-the-isaac-jun-pham-will-st-son-thach-26624"
+      ],
+      "current_source_url": "https://ticketbox.vn/the-aura-khong-the-thay-the-isaac-jun-pham-will-st-son-thach-26624",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26595",
+      "source": "ticketbox_concert",
+      "title": "DANDIYA NIGHT 2026",
+      "venue": "Elite Ballroom - Sheraton Hanoi West",
+      "start_at": "2026-10-17T12:00:00+00:00",
+      "end_at": "2026-10-17T16:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/dandiya-night-2026-26595"
+      ],
+      "current_source_url": "https://ticketbox.vn/dandiya-night-2026-26595",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26578",
+      "source": "ticketbox_concert",
+      "title": "TỪ ĐÂY TỪ NAY: PHUCIUOI",
+      "venue": "Trung Tâm Nghệ Thuật Âu cơ",
+      "start_at": "2026-11-01T13:00:00+00:00",
+      "end_at": "2026-11-01T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/tudaytunay-phuciuoi-26578"
+      ],
+      "current_source_url": "https://ticketbox.vn/tudaytunay-phuciuoi-26578",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26590",
+      "source": "ticketbox_concert",
+      "title": "Tinh Hà \"Say Hi\" Concert - Đêm 3",
+      "venue": "Trung tâm triển lãm Việt Nam (VEC)",
+      "start_at": "2026-11-14T12:00:00+00:00",
+      "end_at": "2026-11-14T16:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/tinh-ha-say-hi-dem-3-26590"
+      ],
+      "current_source_url": "https://ticketbox.vn/tinh-ha-say-hi-dem-3-26590",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26559",
+      "source": "ticketbox_concert",
+      "title": "MAKE IT TOGETHER - ĐINH MẠNH NINH - SPECIAL GUEST: WILL & HOÀNG TÔN",
+      "venue": "Trung Tâm Nghệ Thuật Âu Cơ",
+      "start_at": "2026-11-07T13:00:00+00:00",
+      "end_at": "2026-11-07T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/make-it-together-dinh-manh-ninh-special-guest-will-hoang-ton-26559"
+      ],
+      "current_source_url": "https://ticketbox.vn/make-it-together-dinh-manh-ninh-special-guest-will-hoang-ton-26559",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26550",
+      "source": "ticketbox_concert",
+      "title": "HBAShow: Giá Như Anh Là Em - Lệ Quyên",
+      "venue": "SOL 8 - LIVE STAGE",
+      "start_at": "2026-10-18T13:00:00+00:00",
+      "end_at": "2026-10-18T16:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/neu-nhu-anh-la-em-hba-show-26550"
+      ],
+      "current_source_url": "https://ticketbox.vn/neu-nhu-anh-la-em-hba-show-26550",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_concert:26473",
+      "source": "ticketbox_concert",
+      "title": "HOÀNG TÔN-14CASPER-BON NGHIÊM \"LỜI CHƯA KỊP NÓI\"",
+      "venue": "Nhà Hát Âu Cơ",
+      "start_at": "2026-10-24T10:00:00+00:00",
+      "end_at": "2026-10-24T15:00:00+00:00",
+      "category": "concert",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/14-casper-hoang-ton-bon-nghiem-loi-chua-kip-noi-26473"
+      ],
+      "current_source_url": "https://ticketbox.vn/14-casper-hoang-ton-bon-nghiem-loi-chua-kip-noi-26473",
+      "confirmed_by_sources": [
+        "ticketbox_concert"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_festival:26698",
+      "source": "ticketbox_festival",
+      "title": "CELEBRATE DIWALI IN HANOI - INDIAN FLAVOURS, MUSIC & FESTIVE JOY",
+      "venue": "Benaras Sutra Indian Restaurant",
+      "start_at": "2026-11-07T11:00:00+00:00",
+      "end_at": "2026-11-07T13:00:00+00:00",
+      "category": "festival",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/celebrate-diwali-in-hanoi-indian-flavours-music-festive-joy-26698"
+      ],
+      "current_source_url": "https://ticketbox.vn/celebrate-diwali-in-hanoi-indian-flavours-music-festive-joy-26698",
+      "confirmed_by_sources": [
+        "ticketbox_festival"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "ticketbox_festival:26675",
+      "source": "ticketbox_festival",
+      "title": "WE FEST 2026",
+      "venue": "Trung tâm Triển lãm VEC",
+      "start_at": "2026-10-17T12:00:00+00:00",
+      "end_at": "2026-10-17T15:00:00+00:00",
+      "category": "festival",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://ticketbox.vn/we-fest-2026-26675"
+      ],
+      "current_source_url": "https://ticketbox.vn/we-fest-2026-26675",
+      "confirmed_by_sources": [
+        "ticketbox_festival"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "lehoivietnam_hanoi:/vi/su-kien/7020-e7020-le-hoi-do-uong-ha-noi-nam-2026",
+      "source": "lehoivietnam_hanoi",
+      "title": "Lễ hội Đồ uống Hà Nội 2026",
+      "venue": "tại Công viên Thiên văn học, phường Dương Nội",
+      "start_at": "2026-10-08T17:00:00+00:00",
+      "end_at": "2026-10-11T16:59:59+00:00",
+      "category": "festival",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://lehoivietnam.com.vn/vi/su-kien/7020-e7020-le-hoi-do-uong-ha-noi-nam-2026"
+      ],
+      "current_source_url": "https://lehoivietnam.com.vn/vi/su-kien/7020-e7020-le-hoi-do-uong-ha-noi-nam-2026",
+      "confirmed_by_sources": [
+        "lehoivietnam_hanoi"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "lehoivietnam_hanoi:/vi/su-kien/7057-e7057-trien-lam-my-thuat-thu-do-2026",
+      "source": "lehoivietnam_hanoi",
+      "title": "Triển lãm Mỹ thuật Thủ đô 2026",
+      "venue": "tại Bảo tàng Lịch sử Quân sự Việt Nam, km6+500 Đại lộ Thăng Long, phường Xuân Phương, Hà Nội",
+      "start_at": "2026-10-08T17:00:00+00:00",
+      "end_at": "2026-10-19T16:59:59+00:00",
+      "category": "exhibition",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://lehoivietnam.com.vn/vi/su-kien/7057-e7057-trien-lam-my-thuat-thu-do-2026"
+      ],
+      "current_source_url": "https://lehoivietnam.com.vn/vi/su-kien/7057-e7057-trien-lam-my-thuat-thu-do-2026",
+      "confirmed_by_sources": [
+        "lehoivietnam_hanoi"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "lehoivietnam_hanoi:/vi/su-kien/7078-e7078-trien-lam-anh-nghe-thuat-ha-noi-lan-thu-56",
+      "source": "lehoivietnam_hanoi",
+      "title": "Triển lãm Ảnh nghệ thuật Hà Nội lần thứ 56",
+      "venue": "tại Không gian vườn hoa Hàng Trống, Trung tâm Văn hóa – Thông tin và Thể thao phường Hoàn Kiếm (42 Nhà Chung, Hà Nội)",
+      "start_at": "2026-10-09T17:00:00+00:00",
+      "end_at": "2026-10-19T16:59:59+00:00",
+      "category": "exhibition",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://lehoivietnam.com.vn/vi/su-kien/7078-e7078-trien-lam-anh-nghe-thuat-ha-noi-lan-thu-56"
+      ],
+      "current_source_url": "https://lehoivietnam.com.vn/vi/su-kien/7078-e7078-trien-lam-anh-nghe-thuat-ha-noi-lan-thu-56",
+      "confirmed_by_sources": [
+        "lehoivietnam_hanoi"
+      ],
+      "first_seen": "2026-10-14T10:07:22.089439",
+      "last_seen": "2026-10-14T10:07:22.089439",
+      "last_updated": "2026-10-14T10:07:22.089439"
+    },
+    {
+      "event_id": "official_hanoi_other:a345868e3b66aa27d636",
+      "source": "official_hanoi_other",
+      "title": "Trường tiểu học Long Biên ​triển khai dự án phát triển trí tuệ cảm xúc và tập huấn ứng dụng “Vi-EQ” cho giáo viên",
+      "venue": "Trường Tiểu học Long Biên",
+      "start_at": "2026-10-08T00:00:00+00:00",
+      "end_at": "2026-10-08T03:00:00+00:00",
+      "category": "other",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://www.hanoi.edu.vn/chinh-tri-tu-tuong-va-cong-tac-hoc-sinh-sinh-vien/truong-tieu-hoc-long-bien-trien-khai-du-an-phat-trien-tri-tue-cam-xuc-va-tap-hu/ctfull/545/17144"
+      ],
+      "current_source_url": "https://www.hanoi.edu.vn/chinh-tri-tu-tuong-va-cong-tac-hoc-sinh-sinh-vien/truong-tieu-hoc-long-bien-trien-khai-du-an-phat-trien-tri-tue-cam-xuc-va-tap-hu/ctfull/545/17144",
+      "confirmed_by_sources": [
+        "official_hanoi_other"
+      ],
+      "first_seen": "2026-10-14T15:26:48.776194",
+      "last_seen": "2026-10-14T15:26:48.776194",
+      "last_updated": "2026-10-14T15:26:48.776194"
+    },
+    {
+      "event_id": "official_hanoi_other:d1c34c2e9aa64ff1ecd6",
+      "source": "official_hanoi_other",
+      "title": "Bí thư Thành ủy Hà Nội dự khai giảng tại Trường THCS Trần Duy Hưng",
+      "venue": "Trường THCS Trần Duy Hưng",
+      "start_at": "2026-10-09T00:00:00+00:00",
+      "end_at": "2026-10-09T03:00:00+00:00",
+      "category": "other",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/bi-thu-thanh-uy-ha-noi-du-khai-giang-tai-truong-thcs-tran-duy-hung/ctfull/1142/17118"
+      ],
+      "current_source_url": "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/bi-thu-thanh-uy-ha-noi-du-khai-giang-tai-truong-thcs-tran-duy-hung/ctfull/1142/17118",
+      "confirmed_by_sources": [
+        "official_hanoi_other"
+      ],
+      "first_seen": "2026-10-14T15:26:48.776194",
+      "last_seen": "2026-10-14T15:26:48.776194",
+      "last_updated": "2026-10-14T15:26:48.776194"
+    },
+    {
+      "event_id": "official_hanoi_other:624218255b42de06b885",
+      "source": "official_hanoi_other",
+      "title": "Chủ tịch UBND Thành phố Vũ Đại Thắng dự khai giảng năm học mới tại Trường Tiểu học Ngô Thì Nhậm",
+      "venue": "Trường Tiểu học Ngô Thì Nhậm",
+      "start_at": "2026-10-09T00:00:00+00:00",
+      "end_at": "2026-10-09T03:00:00+00:00",
+      "category": "other",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/chu-tich-ubnd-thanh-pho-vu-dai-thang-du-khai-giang-nam-hoc-moi-tai-truong-tieu/ctfull/1142/17117"
+      ],
+      "current_source_url": "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/chu-tich-ubnd-thanh-pho-vu-dai-thang-du-khai-giang-nam-hoc-moi-tai-truong-tieu/ctfull/1142/17117",
+      "confirmed_by_sources": [
+        "official_hanoi_other"
+      ],
+      "first_seen": "2026-10-14T15:26:48.776194",
+      "last_seen": "2026-10-14T15:26:48.776194",
+      "last_updated": "2026-10-14T15:26:48.776194"
+    },
+    {
+      "event_id": "official_hanoi_other:48503044ab0254908cb4",
+      "source": "official_hanoi_other",
+      "title": "Đồng chí Phùng Thị Hồng Hà dự khai giảng năm học mới tại Trường THCS Hoàng Liệt",
+      "venue": "Trường THCS Hoàng Liệt",
+      "start_at": "2026-10-09T00:00:00+00:00",
+      "end_at": "2026-10-09T03:00:00+00:00",
+      "category": "other",
+      "estimated_attendees": 6100,
+      "attendance_source_url": "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/dong-chi-phung-thi-hong-ha-du-khai-giang-nam-hoc-moi-tai-truong-thcs-hoang-liet/ctfull/1142/17116",
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/dong-chi-phung-thi-hong-ha-du-khai-giang-nam-hoc-moi-tai-truong-thcs-hoang-liet/ctfull/1142/17116"
+      ],
+      "current_source_url": "https://www.hanoi.edu.vn/giao-duc-thu-do-doi-moi-hoi-nhap-phat-trien/dong-chi-phung-thi-hong-ha-du-khai-giang-nam-hoc-moi-tai-truong-thcs-hoang-liet/ctfull/1142/17116",
+      "confirmed_by_sources": [
+        "official_hanoi_other"
+      ],
+      "first_seen": "2026-10-14T15:26:48.776194",
+      "last_seen": "2026-10-14T15:26:48.776194",
+      "last_updated": "2026-10-14T15:26:48.776194"
+    },
+    {
+      "event_id": "official_hanoi_other:b86fdfd1c2d685c03303",
+      "source": "official_hanoi_other",
+      "title": "Sở GDĐT tập huấn công tác tổ chức bữa ăn bán trú cho hơn 600 Hiệu trưởng trường Mầm non, Tiểu học",
+      "venue": "Trường Bồi dưỡng Cán bộ Giáo dục Hà Nội",
+      "start_at": "2026-10-08T00:00:00+00:00",
+      "end_at": "2026-10-08T03:00:00+00:00",
+      "category": "other",
+      "estimated_attendees": 600,
+      "attendance_source_url": "https://www.hanoi.edu.vn/tin-tuc-su-kien/so-gddt-tap-huan-cong-tac-to-chuc-bua-an-ban-tru-cho-hon-600-hieu-truong-truong/ctfull/525/17124",
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://www.hanoi.edu.vn/tin-tuc-su-kien/so-gddt-tap-huan-cong-tac-to-chuc-bua-an-ban-tru-cho-hon-600-hieu-truong-truong/ctfull/525/17124"
+      ],
+      "current_source_url": "https://www.hanoi.edu.vn/tin-tuc-su-kien/so-gddt-tap-huan-cong-tac-to-chuc-bua-an-ban-tru-cho-hon-600-hieu-truong-truong/ctfull/525/17124",
+      "confirmed_by_sources": [
+        "official_hanoi_other"
+      ],
+      "first_seen": "2026-10-14T15:26:48.776194",
+      "last_seen": "2026-10-14T15:26:48.776194",
+      "last_updated": "2026-10-14T15:26:48.776194"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-hong-linh-ha-tinh-3/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Hồng Lĩnh Hà Tĩnh",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-10-08T12:15:00+00:00",
+      "end_at": "2026-10-08T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": 2500,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-hong-linh-ha-tinh-3/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-hong-linh-ha-tinh-3/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/ha-noi-vs-bac-ninh/",
+      "source": "vpf_football",
+      "title": "Hà Nội vs Bắc Ninh",
+      "venue": "SVĐ Mỹ Đình",
+      "start_at": "2026-10-11T12:15:00+00:00",
+      "end_at": "2026-10-11T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": 7000,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/ha-noi-vs-bac-ninh/"
+      ],
+      "current_source_url": "https://vpf.vn/match/ha-noi-vs-bac-ninh/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-ha-noi-5/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Hà Nội",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-10-18T12:15:00+00:00",
+      "end_at": "2026-10-18T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-ha-noi-5/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-ha-noi-5/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-dong-a-thanh-hoa-5/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Thanh Hóa",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-10-22T12:15:00+00:00",
+      "end_at": "2026-10-22T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-dong-a-thanh-hoa-5/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-dong-a-thanh-hoa-5/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-bac-ninh-2/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Bắc Ninh",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-10-23T12:15:00+00:00",
+      "end_at": "2026-10-23T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-bac-ninh-2/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-bac-ninh-2/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/ha-noi-vs-ninh-binh-2/",
+      "source": "vpf_football",
+      "title": "Hà Nội vs Ninh Bình",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-11-01T12:15:00+00:00",
+      "end_at": "2026-11-01T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/ha-noi-vs-ninh-binh-2/"
+      ],
+      "current_source_url": "https://vpf.vn/match/ha-noi-vs-ninh-binh-2/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-cong-an-tp-ho-chi-minh/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Công an TP. Hồ Chí Minh",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-11-07T12:15:00+00:00",
+      "end_at": "2026-11-07T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-cong-an-tp-ho-chi-minh/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-cong-an-tp-ho-chi-minh/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-dong-a-thanh-hoa-3/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Thanh Hóa",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-11-08T12:15:00+00:00",
+      "end_at": "2026-11-08T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-dong-a-thanh-hoa-3/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-dong-a-thanh-hoa-3/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-song-lam-nghe-an-3/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Sông Lam Nghệ An",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-11-20T12:15:00+00:00",
+      "end_at": "2026-11-20T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-song-lam-nghe-an-3/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-song-lam-nghe-an-3/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/ha-noi-vs-hong-linh-ha-tinh-9/",
+      "source": "vpf_football",
+      "title": "Hà Nội vs Hồng Lĩnh Hà Tĩnh",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-11-28T12:15:00+00:00",
+      "end_at": "2026-11-28T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/ha-noi-vs-hong-linh-ha-tinh-9/"
+      ],
+      "current_source_url": "https://vpf.vn/match/ha-noi-vs-hong-linh-ha-tinh-9/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/ha-noi-vs-hai-phong-10/",
+      "source": "vpf_football",
+      "title": "Hà Nội vs Hải Phòng",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-06T12:15:00+00:00",
+      "end_at": "2026-12-06T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/ha-noi-vs-hai-phong-10/"
+      ],
+      "current_source_url": "https://vpf.vn/match/ha-noi-vs-hai-phong-10/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-ha-noi-5/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Hà Nội",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-11T12:15:00+00:00",
+      "end_at": "2026-12-11T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-ha-noi-5/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-ha-noi-5/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-hoang-anh-gia-lai-5/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Hoàng Anh Gia Lai",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-13T12:15:00+00:00",
+      "end_at": "2026-12-13T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-hoang-anh-gia-lai-5/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-hoang-anh-gia-lai-5/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-hai-phong-6/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Hải Phòng",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-17T12:15:00+00:00",
+      "end_at": "2026-12-17T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-hai-phong-6/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-hai-phong-6/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/the-cong-viettel-vs-hoang-anh-gia-lai-4/",
+      "source": "vpf_football",
+      "title": "Thể Công – Viettel vs Hoàng Anh Gia Lai",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-18T12:15:00+00:00",
+      "end_at": "2026-12-18T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/the-cong-viettel-vs-hoang-anh-gia-lai-4/"
+      ],
+      "current_source_url": "https://vpf.vn/match/the-cong-viettel-vs-hoang-anh-gia-lai-4/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/ha-noi-vs-thep-xanh-nam-dinh-5/",
+      "source": "vpf_football",
+      "title": "Hà Nội vs Thép Xanh Nam Định",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-21T12:15:00+00:00",
+      "end_at": "2026-12-21T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/ha-noi-vs-thep-xanh-nam-dinh-5/"
+      ],
+      "current_source_url": "https://vpf.vn/match/ha-noi-vs-thep-xanh-nam-dinh-5/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    },
+    {
+      "event_id": "vpf_football:https://vpf.vn/match/cong-an-ha-noi-vs-bac-ninh/",
+      "source": "vpf_football",
+      "title": "Công an Hà Nội vs Bắc Ninh",
+      "venue": "SVĐ Hàng Đẫy",
+      "start_at": "2026-12-25T12:15:00+00:00",
+      "end_at": "2026-12-25T14:15:00+00:00",
+      "category": "football",
+      "estimated_attendees": null,
+      "attendance_source_url": null,
+      "latitude": null,
+      "longitude": null,
+      "h3_index": null,
+      "source_urls_history": [
+        "https://vpf.vn/match/cong-an-ha-noi-vs-bac-ninh/"
+      ],
+      "current_source_url": "https://vpf.vn/match/cong-an-ha-noi-vs-bac-ninh/",
+      "confirmed_by_sources": [
+        "vpf_football"
+      ],
+      "first_seen": "2026-10-14T17:23:45.739800",
+      "last_seen": "2026-10-14T17:23:45.739800",
+      "last_updated": "2026-10-14T17:23:45.739800"
+    }
+  ]
+}
