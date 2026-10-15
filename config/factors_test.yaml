@@ -1,0 +1,218 @@
+events:
+  attendance_estimation:
+    fill_missing_with_heuristic: false
+    reported_attendance_overrides:
+    - attendance: 31569
+      source: vff_football
+      source_url: https://vnexpress.net/viet-nam-dong-khan-gia-nhat-vong-bang-asean-cup-2026-5107780.html
+      start_at_utc: '2026-07-31T13:00:00Z'
+      title: "Vi\u1EC7t Nam vs Singapore"
+    - attendance: 19628
+      source: vff_football
+      source_url: https://vnexpress.net/viet-nam-dong-khan-gia-nhat-vong-bang-asean-cup-2026-5107780.html
+      start_at_utc: '2026-08-07T13:00:00Z'
+      title: "Vi\u1EC7t Nam vs Campuchia"
+    - attendance: 37906
+      source: vff_football
+      source_url: https://vov.vn/the-thao/san-my-dinh-lap-ky-luc-ve-so-luong-khan-gia-o-asean-cup-2026-post1325665.vov
+      start_at_utc: '2026-08-19T13:00:00Z'
+      title: "Vi\u1EC7t Nam vs Malaysia"
+    - attendance: 40000
+      source: vff_football
+      source_url: https://tuoitre.vn/cdv-mo-hoi-truoc-san-my-dinh-cho-viet-nam-dau-thai-lan-100260826160335574.htm
+      start_at_utc: '2026-08-26T13:00:00Z'
+      title: "Vi\u1EC7t Nam vs Th\xE1i Lan"
+    - attendance: 10000
+      source: ticketbox_concert
+      source_url: https://vnexpress.net/phao-cuu-sinh-cua-huong-tram-5104230.html
+      start_at_utc: '2026-08-01T13:00:00Z'
+      title: "PHAO C\u1EE8U SINH CONCERT - H\u01AF\u01A0NG TR\xC0M"
+    - attendance: 4000
+      source: ticketbox_concert
+      source_url: https://dantri.com.vn/giai-tri/phung-khanh-linh-tung-hoai-nghi-ban-than-den-tuoi-32-khong-con-co-don-20260809110450885.htm
+      start_at_utc: '2026-08-08T12:00:00Z'
+      title: "'GI\u1EEEA M\u1ED8T V\u1EA0N TOUR' - PH\xD9NG KH\xC1NH LINH | CHAPTER\
+        \ 3: LIVE EXPERIENCE IN H\xC0 N\u1ED8I"
+    - attendance: 2000
+      source: ticketbox_concert
+      source_url: https://thethaovanhoa.vn/print-20260816152123824.htm
+      start_at_utc: '2026-08-15T02:00:00Z'
+      title: CARROT DAY 2026
+    - attendance: 4000
+      source: ticketbox_concert
+      source_url: https://thethaovanhoa.vn/legacy-of-love-dieu-truong-sang-trong-trong-di-san-thanh-tung-20260816113028205.htm
+      start_at_utc: '2026-08-15T13:00:00Z'
+      title: "LEGACY OF LOVE - 10 n\u0103m t\u01B0\u1EDFng nh\u1EDB nh\u1EA1c s\u0129\
+        \ Thanh T\xF9ng"
+    - attendance: 5000
+      source: ticketbox_concert
+      source_url: https://vov.vn/van-hoa/am-nhac/hang-ngan-khan-gia-chay-cung-boc-fest-2026-tai-nha-may-xe-lua-gia-lam-post1334249.vov
+      start_at_utc: '2026-09-19T10:00:00Z'
+      title: "B\u1ED0C FEST"
+    - attendance: 40000
+      source: lehoivietnam_hanoi
+      source_url: https://nhandan.vn/an-tuong-chuong-trinh-nghe-thuat-dac-biet-am-vang-to-quoc-post959036.html
+      start_at_utc: '2026-04-27T17:00:00Z'
+      title: "Ch\u01B0\u01A1ng tr\xECnh ngh\u1EC7 thu\u1EADt \xC2m vang T\u1ED5 qu\u1ED1\
+        c 2026"
+    - attendance: 40000
+      source: lehoivietnam_hanoi
+      source_url: https://tdtt.gov.vn/diem-bao/id/94521/diem-tin-hoat-dong-tdtt-ngay-08-05-2026
+      start_at_utc: '2026-05-07T17:00:00Z'
+      title: LCK Roadshow 2026
+  csv_output_file: data/event_test.csv
+  event_date_window:
+    end_date: '2026-09-23'
+    start_date: '2026-04-13'
+  sheet_classification:
+    concert:
+      keywords:
+      - concert
+      - live show
+      - liveshow
+      - "\xE2m nh\u1EA1c"
+      - music
+      - "s\u01A1n t\xF9ng"
+      - "h\xF2a minzy"
+      - anh trai say hi
+      - "\xE2m thanh v\u01B0\u1EE3t \u0111\u1EA1i d\u01B0\u01A1ng"
+      type_values:
+      - concert
+      - music_concert
+    exhibition:
+      keywords:
+      - "tri\u1EC3n l\xE3m"
+      - "tr\u01B0ng b\xE0y"
+      - exhibition
+      type_values:
+      - exhibition
+    festival:
+      keywords:
+      - "l\u1EC5 h\u1ED9i"
+      - festival
+      - "ng\xE0y h\u1ED9i"
+      - "h\u1ED9i xu\xE2n"
+      type_values:
+      - festival
+      - festival_public
+    football:
+      keywords: []
+      type_values:
+      - football
+    other:
+      keywords: []
+      type_values: []
+  sources:
+    lehoivietnam_hanoi:
+      enabled: true
+      full_scan_every_runs: 4
+      listing_url: https://lehoivietnam.com.vn/vi/kham-pha?tag_key=place%3Aha-noi
+      max_pages: 20
+      scope_city: hanoi
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      user_agent: DemandSpikeDetector/0.1
+    official_hanoi_other:
+      default_duration_minutes: 180
+      enabled: true
+      full_scan_every_runs: 4
+      listing_sources:
+      - allowed_hosts:
+        - www.hanoi.edu.vn
+        - hanoi.edu.vn
+        excluded_title_prefixes:
+        - v/v
+        - "c\xF4ng v\u0103n"
+        - "th\xF4ng b\xE1o"
+        keywords:
+        - "khai gi\u1EA3ng"
+        - "t\u1EF1u tr\u01B0\u1EDDng"
+        - workshop
+        - "h\u1ED9i th\u1EA3o"
+        - "t\u1EADp hu\u1EA5n"
+        listing_url: https://www.hanoi.edu.vn/
+        name: Hanoi Department of Education and Training
+      scope_city: hanoi
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      user_agent: DemandSpikeDetector/0.1
+    ticketbox_concert:
+      category: music
+      enabled: true
+      from_date: '2026-04-13'
+      full_scan_every_runs: 4
+      max_pages: 5
+      max_retries: 3
+      page_size: 100
+      scope_city: hanoi
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      to_date: '2026-09-22'
+      user_agent: DemandSpikeDetector/0.1
+    ticketbox_festival:
+      enabled: true
+      from_date: '2026-04-13'
+      full_scan_every_runs: 4
+      max_pages: 5
+      max_retries: 3
+      page_size: 100
+      scope_city: hanoi
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      to_date: '2026-09-22'
+      user_agent: DemandSpikeDetector/0.1
+    van_mieu:
+      article_listing_max_pages: 20
+      article_listing_urls:
+        cultural: https://vanmieu.gov.vn/vi/events/cultural-events
+        diplomatic: https://vanmieu.gov.vn/vi/events/diplomatic
+        seminar: https://vanmieu.gov.vn/vi/events/conferences
+        workshop: https://vanmieu.gov.vn/vi/events/workshop
+      enabled: true
+      endpoint: https://vanmieu.gov.vn/api/events
+      full_scan_every_runs: 4
+      limit: 100
+      listing_url: https://vanmieu.gov.vn/vi/events/cultural-events
+      locale: vi
+      max_pages: 20
+      max_retries: 3
+      resolve_article_urls: true
+      scope_city: hanoi
+      timeout_seconds: 30
+      user_agent: DemandSpikeDetector/0.1
+      watermark_overlap_minutes: 10
+    vff_football:
+      default_duration_minutes: 120
+      enabled: true
+      full_scan_every_runs: 4
+      listing_url: https://vff.org.vn/chuyen-muc/tin-tuc/thong-tin-ve/
+      max_listing_pages: 8
+      max_retries: 3
+      scope_city: hanoi
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      user_agent: DemandSpikeDetector/0.1
+    vpf_football:
+      calendars:
+        national_cup_2025_26: https://vpf.vn/season/cup-quoc-gia-2026/?action=calendar&pagejs=1
+        national_cup_2026_27: https://vpf.vn/season/cup-quoc-gia-2027/?action=calendar&pagejs=1
+        v_league_1_2025_26: https://vpf.vn/season/v-league-2026/?action=calendar&pagejs=1
+        v_league_1_2026_27: https://vpf.vn/season/v-league-2027/?action=calendar&pagejs=1
+        v_league_2_2026_27: https://vpf.vn/season/hang-nhat-quoc-gia-2027/?action=calendar&pagejs=1
+      default_duration_minutes: 120
+      enabled: true
+      hanoi_venue_allowlist:
+      - SVD Hang Day
+      - SVD My Dinh
+      max_retries: 3
+      scope_city: hanoi
+      timeout_seconds: 30
+      timezone: Asia/Ho_Chi_Minh
+      user_agent: DemandSpikeDetector/0.1
+  workbook_output_file: data/event_test.xlsx
+pipeline:
+  city: hanoi
+  data_dir: data
+  timezone: Asia/Ho_Chi_Minh

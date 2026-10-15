@@ -25,15 +25,25 @@ class TicketboxConcertEventSource(EventSource):
     def __init__(
         self,
         config: Mapping[str, Any],
+        event_date_window: Mapping[str, str] | None = None,
         session: requests.Session | Any | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         random_fn: Callable[[], float] = random.random,
     ) -> None:
-        self.config = dict(config)
+        super().__init__(config, event_date_window)
         self.search_url = self._required_url("search_url")
         self.category = self._required_string(self.config.get("category"), "category")
-        self.from_date = self._parse_date(self.config.get("from_date"), "from_date")
-        self.to_date = self._parse_date(self.config.get("to_date"), "to_date")
+
+        # Use event_date_window if provided, otherwise fall back to source config
+        if event_date_window:
+            start_str = event_date_window.get("start_date")
+            end_str = event_date_window.get("end_date")
+            self.from_date = self._parse_date(start_str, "start_date") if start_str else date(1970, 1, 1)
+            self.to_date = self._parse_date(end_str, "end_date") if end_str else date(2999, 12, 31)
+        else:
+            self.from_date = self._parse_date(self.config.get("from_date"), "from_date")
+            self.to_date = self._parse_date(self.config.get("to_date"), "to_date")
+
         if self.to_date < self.from_date:
             raise ValueError("Ticketbox to_date must not precede from_date.")
         self.page_size = self._positive_int(self.config.get("page_size", 100), "page_size")

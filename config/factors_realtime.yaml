@@ -1,0 +1,114 @@
+pipeline:
+  city: hanoi
+  timezone: Asia/Ho_Chi_Minh
+  data_dir: data
+
+event_realtime:
+  horizon_days: 365
+  notify_threshold: 0.5
+
+events:
+  csv_output_file: event.csv
+  workbook_output_file: events.xlsx
+  event_date_window:
+    start_date: "2026-09-01"
+    end_date: "2027-12-31"
+  sources:
+    van_mieu:
+      enabled: true
+      endpoint: https://vanmieu.gov.vn/api/events
+      listing_url: https://vanmieu.gov.vn/vi/events/cultural-events
+      resolve_article_urls: true
+      article_listing_urls:
+        cultural: https://vanmieu.gov.vn/vi/events/cultural-events
+        workshop: https://vanmieu.gov.vn/vi/events/workshop
+        diplomatic: https://vanmieu.gov.vn/vi/events/diplomatic
+        seminar: https://vanmieu.gov.vn/vi/events/conferences
+      article_listing_max_pages: 20
+      locale: vi
+      limit: 100
+      max_pages: 20
+      timeout_seconds: 30
+      max_retries: 3
+      watermark_overlap_minutes: 10
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    vpf_football:
+      enabled: true
+      calendars:
+        # v_league_1_2025_26: timeout liên tục, bỏ qua
+        national_cup_2025_26: https://vpf.vn/season/cup-quoc-gia-2026/?action=calendar&pagejs=1
+        v_league_1_2026_27: https://vpf.vn/season/v-league-2027/?action=calendar&pagejs=1
+        v_league_2_2026_27: https://vpf.vn/season/hang-nhat-quoc-gia-2027/?action=calendar&pagejs=1
+        national_cup_2026_27: https://vpf.vn/season/cup-quoc-gia-2027/?action=calendar&pagejs=1
+      hanoi_venue_allowlist:
+        - SVĐ Hàng Đẫy
+        - SVĐ Mỹ Đình
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 120
+      timeout_seconds: 8
+      max_retries: 1
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    vff_football:
+      enabled: true
+      listing_url: https://vff.org.vn/chuyen-muc/tin-tuc/thong-tin-ve/
+      max_listing_pages: 8
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 120
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    ticketbox_concert:
+      enabled: true
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      category: music
+      from_date: "2026-09-29"
+      to_date: "2027-12-31"
+      page_size: 100
+      max_pages: 5
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    ticketbox_festival:
+      enabled: true
+      search_url: https://api-v2.ticketbox.vn/search/v2/events
+      from_date: "2026-09-29"
+      to_date: "2027-12-31"
+      page_size: 100
+      max_pages: 5
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      max_retries: 3
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    lehoivietnam_hanoi:
+      enabled: true
+      listing_url: https://lehoivietnam.com.vn/vi/kham-pha?tag_key=place%3Aha-noi
+      max_pages: 20
+      timezone: Asia/Ho_Chi_Minh
+      timeout_seconds: 30
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi
+    official_hanoi_other:
+      enabled: true
+      listing_sources:
+        - name: Hanoi Department of Education and Training
+          listing_url: https://www.hanoi.edu.vn/
+          allowed_hosts: [www.hanoi.edu.vn, hanoi.edu.vn]
+          keywords: ["khai giảng", "tựu trường", "workshop", "hội thảo", "tập huấn"]
+          excluded_title_prefixes: ["v/v", "công văn", "thông báo"]
+      timezone: Asia/Ho_Chi_Minh
+      default_duration_minutes: 180
+      timeout_seconds: 30
+      full_scan_every_runs: 4
+      user_agent: DemandSpikeDetector/0.1
+      scope_city: hanoi

@@ -56,8 +56,6 @@ htmlcov/
 # Data
 *.csv
 *.parquet
-*.parquet.as.json
-*.as.json
 *.db
 *.sqlite
 

@@ -21,6 +21,9 @@ CSV_COLUMNS = (
     "estimate_attendence",
     "source_url",
     "attendance_source_url",
+    "latitude",
+    "longitude",
+    "h3_index",
 )
 
 
@@ -163,6 +166,9 @@ class EventCsvExporter:
                 "estimate_attendence": int(estimate) if is_first and estimate is not None else "",
                 "source_url": str(record.get("source_url") or ""),
                 "attendance_source_url": str(record.get("attendance_source_url") or ""),
+                "latitude": record.get("latitude") or "",
+                "longitude": record.get("longitude") or "",
+                "h3_index": record.get("h3_index") or "",
             })
             current_date += timedelta(days=1)
         return rows

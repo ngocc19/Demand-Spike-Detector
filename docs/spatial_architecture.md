@@ -1,323 +1,235 @@
-# Spatial Weather Ensemble Architecture
+# Spatial Architecture Documentation
 
 ## Overview
 
-Complete spatial ensemble architecture that maps weather data to H3 hexagons for demand forecasting and routing optimization, with optimized NCHMF integration.
+This document describes the spatial architecture for mapping weather and infrastructure data to H3 hexagons for demand forecasting and routing optimization.
 
-## Architecture Diagram
+## H3 Grid System
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    SPATIAL WEATHER ENSEMBLE PIPELINE                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │  STARTUP (once)                                                       │  │
-│  │                                                                       │  │
-│  │  Static Lookups (O(1) lookup, no geometry at runtime):               │  │
-│  │  ├── H3 → District: {hex: district, ...}  (~237 entries)            │  │
-│  │  └── District → Zone: {district: zone, ...}  (~30 entries)          │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │  NORMALIZATION LAYER (on NCHMF crawl - every 3 hours)               │  │
-│  │                                                                       │  │
-│  │  NCHMF Text → Zone Warnings:                                         │  │
-│  │                                                                       │  │
-│  │  "Cảnh báo giông lốc khu vực nội thành"                            │  │
-│  │       ↓                                                              │  │
-│  │  nchmf_zone_warnings = {                                            │  │
-│  │      'NoiThanh': {'storm': 1.0, 'heavy_rain': 0.8, 'flood': 0.5}  │  │
-│  │      'PhiaTay': {'storm': 0.5, 'heavy_rain': 0.3, 'flood': 0.2}    │  │
-│  │  }                                                                   │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │  RUNTIME PER HEXAGON (O(1) - 3 dictionary lookups)                   │  │
-│  │                                                                       │  │
-│  │  h3_index                                                           │  │
-│  │      │                                                               │  │
-│  │      ├──→ district = h3_to_district.get(h3_index)      # O(1)      │  │
-│  │      │                                                               │  │
-│  │      ├──→ zone = district_to_zone.get(district)      # O(1)        │  │
-│  │      │                                                               │  │
-│  │      └──→ nchmf_warning = zone_cache.get(zone)      # O(1)         │  │
-│  │                                                                       │  │
-│  │  Total: 3 dictionary lookups = Microseconds                          │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │  DATA SOURCES                                                        │  │
-│  │                                                                       │  │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                  │  │
-│  │  │   OWM   │ │   VCW   │ │  HSDC   │ │  NCHMF  │                  │  │
-│  │  │ Res 8   │ │ Res 8   │ │ Stations │ │ Zone    │                  │  │
-│  │  │(Centroid)│(Centroid)│ │  → Hex   │ │ (O(1))  │                  │  │
-│  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘                  │  │
-│  │       └───────────┴───────────┴───────────┘                        │  │
-│  │                           │                                          │  │
-│  │                    ┌──────▼──────┐                                   │  │
-│  │                    │  Weather    │                                   │  │
-│  │                    │ Ensemble    │                                   │  │
-│  │                    │ Aggregator  │                                   │  │
-│  │                    └──────┬──────┘                                   │  │
-│  │                           │                                          │  │
-│  └───────────────────────────┼──────────────────────────────────────────┘  │
-│                              │                                              │
-│                              ▼                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │  OUTPUT: DataFrame per hexagon                                      │  │
-│  │                                                                       │  │
-│  │  ├── h3_index          (H3 ID)                                      │  │
-│  │  ├── latitude/longitude (centroid)                                  │  │
-│  │  ├── zone/district     (from lookup)                                │  │
-│  │  ├── ensemble_rainfall (continuous)                                │  │
-│  │  ├── ensemble_storm_prob (classification - for Prophet/CUSUM)       │  │
-│  │  ├── source_weights_*  (per variable)                              │  │
-│  │  └── has_hsdc_station  (Circuit Breaker flag)                       │  │
-│  │                                                                       │  │
-│  │  → Input to Demand Spike Detector Model                             │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+### Resolution Selection
 
-## Zone Definitions
+| Resolution | Area/Hex | Total Hexes (Hanoi) | Use Case |
+|-----------|----------|---------------------|----------|
+| Res 7 | ~1.65 km² | ~183 | Regional planning |
+| **Res 8** | **~0.46 km²** | **~1,145** | **Demand forecasting** |
+| Res 9 | ~0.10 km² | ~3,111 | Street-level routing |
 
-NCHMF warning zones align with geographic regions:
-
-| Zone | Districts | Priority | Description |
-|------|-----------|----------|-------------|
-| **NoiThanh** | HoanKiem, HaiBaTrung, DongDa, BaDinh, TayHo, CauGiay | 1 | 6 quận trung tâm |
-| **PhiaTay** | ThanhXuan, HoangMai, NamTuLiem, BacTuLiem | 2 | Phía Tây - đồi núi |
-| **PhiaBac** | LongBien, GiaLam, SocSon, DongAnh | 3 | Phía Bắc - sông Hồng |
-| **PhiaNam** | ThanhTri, HoaiDuc, TuLiEm, SonTay | 4 | Phía Nam |
-| **NgoaiThanh** | BaVi, PhuTho, HungYen, VinhPhuc, BacNinh | 5 | Ngoại thành |
-
-## Key Components
-
-### 1. Static Lookup Tables (Pre-computed)
+### Hanoi Coverage
 
 ```python
-# src/pipeline/nchmf_spatial_lookup.py
+HANOI_CENTER = (21.0285, 105.8542)
+H3_RES = 8
 
-# H3 → District mapping (generated once at startup)
-H3_TO_DISTRICT: Dict[str, str] = {
+# Generate hex grid covering Hanoi
+center_hex = h3.latlng_to_cell(HANOI_CENTER[0], HANOI_CENTER[1], H3_RES)
+hexes = list(h3.grid_disk(center_hex, radius))
+# ~1145 hexes covering Hanoi metro area
+```
+
+## Spatial Pipeline Components
+
+### 1. Weather Anchors
+
+Weather data is mapped to H3 hexagons using centroid-based assignment:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  WEATHER DATA FLOW                                                   │
+│                                                                      │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐                     │
+│  │   OWM   │     │   VCW   │     │  HSDC   │                     │
+│  │   API   │     │   API   │     │ Stations│                     │
+│  └────┬────┘     └────┬────┘     └────┬────┘                     │
+│       │                │                │                           │
+│       │  lat/lon      │  lat/lon       │  station → hex           │
+│       └───────┬───────┘                │                           │
+│               │                        │                           │
+│               ▼                        ▼                           │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │           H3 LAT/LNG → CELL MAPPING                    │        │
+│  │                                                         │        │
+│  │   h3.latlng_to_cell(lat, lon, 8) → hex_id             │        │
+│  │                                                         │        │
+│  └─────────────────────────────────────────────────────────┘        │
+│                              │                                     │
+│                              ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │           WEATHER ANCHOR ASSIGNMENT                      │        │
+│  │                                                         │        │
+│  │   hex_id: 88415cb4e5fffff                              │        │
+│  │   weather data: {temp_c, rain_mm, humidity_pct, ...}  │        │
+│  │                                                         │        │
+│  └─────────────────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. NCHMF Spatial Lookup (O(1))
+
+NCHMF warnings are mapped to zones using pre-computed lookup tables:
+
+```python
+# Pre-computed at startup (O(1) at runtime)
+H3_TO_DISTRICT = {
     '88415cb4e5fffff': 'HoanKiem',
     '8841436961fffff': 'CauGiay',
     ...
 }
 
-# District → Zone mapping (static)
-DISTRICT_TO_ZONE: Dict[str, str] = {
+DISTRICT_TO_ZONE = {
     'HoanKiem': 'NoiThanh',
     'CauGiay': 'NoiThanh',
     'ThanhXuan': 'PhiaTay',
     ...
 }
-```
 
-### 2. NCHMF Zone Cache (Dynamic)
-
-```python
-class NCHMFZoneWarningCache:
-    """Cache for NCHMF zone warnings - updated on crawl."""
-
-    _cache = {
-        'NoiThanh': {'storm': 1.0, 'heavy_rain': 0.8, 'flood': 0.5},
-        'PhiaTay': {'storm': 0.5, 'heavy_rain': 0.3, 'flood': 0.2},
-        ...
-    }
-
-    def update(self, zone_warnings: Dict[str, Dict]):
-        """Called when NCHMF is crawled."""
-        ...
-
-    def get_zone_warning(self, zone: str) -> Dict:
-        """O(1) lookup."""
-        return self._cache.get(zone, default_warning)
-```
-
-### 3. O(1) Lookup Chain
-
-```python
-def get_nchmf_for_hex(h3_index: str) -> Dict:
-    """
-    O(1) lookup chain for NCHMF data.
-
-    h3_index → district → zone → warning
-    """
-    # Step 1: H3 → District (static lookup)
+# Runtime lookup: h3_index → district → zone → warning (3 dict lookups)
+def get_nchmf_warning(h3_index: str) -> Dict:
     district = H3_TO_DISTRICT.get(h3_index)
-
-    # Step 2: District → Zone (static lookup)
     zone = DISTRICT_TO_ZONE.get(district)
-
-    # Step 3: Zone → Warning (dynamic cache)
-    warning = nchmf_zone_cache.get_zone_warning(zone)
-
+    warning = nchmf_zone_cache.get(zone, default_warning)
     return warning
 ```
 
-### 4. Local Ensemble Per Hexagon
+### 3. Zone Definitions
 
-```python
-def run_local_ensemble(h3_index: str, config: EnsembleConfig) -> Dict:
-    """Run WeatherEnsembleAggregator for ONE hexagon."""
+| Zone | Districts | Description |
+|------|-----------|-------------|
+| **NoiThanh** | HoanKiem, HaiBaTrung, DongDa, BaDinh, TayHo, CauGiay | 6 central districts |
+| **PhiaTay** | ThanhXuan, HoangMai, NamTuLiem, BacTuLiem | Western Hanoi |
+| **PhiaBac** | LongBien, GiaLam, SocSon, DongAnh | Northern Hanoi |
+| **PhiaNam** | ThanhTri, HoaiDuc, TuLiEm, SonTay | Southern Hanoi |
+| **NgoaiThanh** | BaVi, PhuTho, HungYen, VinhPhuc, BacNinh | Suburban |
 
-    # Get data from sources
-    rainfall_values = {
-        'OWM': query_owm(lat, lng),
-        'VCW': query_vcw(lat, lng),
-        'HSDC': hsdc_rainfall if has_hsdc_station else 0,
-        'NCHMF': nchmf_warning['heavy_rain'] * 50,  # Scale to mm
-    }
+## OSM Capacity Mapping
 
-    storm_values = {
-        'OWM': is_thunderstorm(weather_code),
-        'VCW': 'thunderstorm' in conditions,
-        'HSDC': 0,  # No storm data
-        'NCHMF': nchmf_warning['storm'],
-    }
-
-    # Circuit Breaker
-    source_status = {
-        'OWM': 1,
-        'VCW': 1,
-        'HSDC': 1 if has_hsdc else 0,  # Key: 0 if no station!
-        'NCHMF': 1,
-    }
-
-    # Run ensembles
-    rainfall_result = aggregator.ensemble_continuous('rainfall', rainfall_values)
-    storm_result = aggregator.ensemble_classification('storm', storm_values)
-
-    return {
-        'h3_index': h3_index,
-        'ensemble_rainfall': rainfall_result.ensemble_value,
-        'ensemble_storm_prob': storm_result.ensemble_value,  # For Prophet/CUSUM
-        ...
-    }
-```
-
-## Data Flow
+### Data Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 0: Startup (once)                                           │
-│                                                                     │
-│  1. Generate H3 → District mapping                                 │
-│  2. Load District → Zone mapping                                    │
-│  3. Initialize NCHMF zone cache                                     │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 1: NCHMF Crawl (every 3 hours)                             │
-│                                                                     │
-│  1. Crawl NCHMF website                                            │
-│  2. Parse warning text → Zone warnings                              │
-│  3. Update nchmf_zone_cache                                        │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 2: HSDC Fetch (every 15 minutes)                           │
-│                                                                     │
-│  1. Fetch HSDC API                                                 │
-│  2. Map stations → H3 indices                                      │
-│  3. Aggregate by hex (MAX)                                         │
-│  4. Create hsdc_lookup table                                       │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 3: OWM/VCW Fetch (hourly)                                  │
-│                                                                     │
-│  For each hexagon:                                                  │
-│    Query OWM at centroid                                           │
-│    Query VCW at centroid                                           │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 4: Local Ensemble (per hexagon)                             │
-│                                                                     │
-│  For each hexagon (1145 total):                                   │
-│    1. Get OWM/VCW data (already fetched)                         │
-│    2. Get HSDC data (from lookup) or 0 if no station             │
-│    3. Get NCHMF warning (O(1) lookup)                            │
-│    4. Run WeatherEnsembleAggregator                               │
-│    5. Store result                                                │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  OUTPUT: Spatial Weather DataFrame                                 │
-│                                                                     │
-│  Ready for:                                                         │
-│  - Demand Spike Detector Model                                     │
-│  - Prophet/CUSUM with storm_prob as exogenous feature             │
-│  - Routing optimization (avoid flood zones)                        │
+│  OSM DATA PIPELINE                                                │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Step 1: Fetch (one-time)                                   │    │
+│  │                                                             │    │
+│  │  Overpass API → osm_with_geometry.json                      │    │
+│  │  Query: way["highway"](bounds)                              │    │
+│  │  Output: 141,956 ways with geometry                         │    │
+│  │                                                             │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                              │                                     │
+│                              ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Step 2: Process to Parquet                                  │    │
+│  │                                                             │    │
+│  │  For each way:                                              │    │
+│  │    For each point in way.geometry:                          │    │
+│  │      hex_id = h3.latlng_to_cell(lat, lon, 8)              │    │
+│  │      score += road_weight                                   │    │
+│  │                                                             │    │
+│  │  Normalize: score → osm_capacity_index (0.01-1.0)        │    │
+│  │                                                             │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                              │                                     │
+│                              ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  Output: h3_osm_capacity.parquet                          │    │
+│  │                                                             │    │
+│  │  hex_id | osm_capacity_index | road_count | hex_lat/lon   │    │
+│  │  88415cb4e5fffff | 0.457 | 593 | 21.0299, 105.8514     │    │
+│  │  ...                                                        │    │
+│  │                                                             │    │
+│  │  Total: 3,997 hexes                                        │    │
+│  │  Hexes with roads: 1,806                                   │    │
+│  │                                                             │    │
+│  └─────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Resolution Guide
+### Road Weights
 
-| Resolution | Area/Hex | Total Hexes | Use Case |
-|------------|----------|-------------|----------|
-| Res 7 | ~1.65 km² | 183 | Regional planning |
-| **Res 8** | **~0.46 km²** | **1,145** | **Demand forecasting** |
-| Res 9 | ~0.10 km² | 3,111 | Street-level routing |
+| Highway Type | Weight | Description |
+|--------------|--------|-------------|
+| motorway | 10.0 | Highway |
+| motorway_link | 8.0 | Highway ramp |
+| trunk | 8.0 | Major road |
+| trunk_link | 6.0 | Major road ramp |
+| primary | 5.0 | Primary road |
+| primary_link | 4.0 | Primary road ramp |
+| secondary | 3.0 | Secondary road |
+| secondary_link | 2.5 | Secondary ramp |
+| tertiary | 2.0 | Tertiary road |
+| tertiary_link | 1.5 | Tertiary ramp |
+| residential | 1.0 | Residential street |
+| unclassified | 0.8 | Minor road |
+| service | 0.5 | Service road |
 
-## Output Schema
+## Code Reference
+
+### Key Scripts
+
+```bash
+# Fetch OSM data (one-time)
+python scripts/fetch_osm_retry.py
+
+# Process to parquet (after fetch)
+python scripts/process_osm_h3api.py
+
+# Generate grid + capacity
+python scripts/osm_batch_pipeline.py --full
+
+# Verify coverage
+python scripts/osm_batch_pipeline.py --verify
+```
+
+### Key Functions
 
 ```python
-result_df = pd.DataFrame({
-    'h3_index': ['88415cb4e5fffff', ...],
-    'latitude': [21.0299, ...],
-    'longitude': [105.8514, ...],
-    'zone': ['NoiThanh', ...],
-    'district': ['CauGiay', ...],
+# src/pipeline/spatial_ensemble_pipeline.py
+def generate_weather_anchors(resolution: int = 8) -> pd.DataFrame:
+    """Generate H3 grid for Hanoi."""
 
-    # Continuous variable
-    'ensemble_rainfall': [12.5, ...],  # mm
+def map_weather_to_hex(df: pd.DataFrame, resolution: int = 8) -> pd.DataFrame:
+    """Map weather data to H3 hexagons."""
 
-    # Classification variable (for Prophet/CUSUM)
-    'ensemble_storm_prob': [0.85, ...],  # 0-1 probability
+# src/pipeline/nchmf_spatial_lookup.py
+def get_h3_to_district_mapping() -> Dict[str, str]:
+    """Generate H3 → District mapping."""
 
-    # Source metadata
-    'has_hsdc_station': [True, ...],
-    'hsdc_station': ['HoanKiem', ...],
-    'source_weights_rainfall': [{'OWM': 0.25, 'VCW': 0.25, ...}, ...],
-    'source_weights_storm': [{'OWM': 0.2, 'VCW': 0.2, 'NCHMF': 0.6}, ...],
-    'active_sources_rainfall': [4, ...],
-    'active_sources_storm': [3, ...],
-})
-```
+def get_district_to_zone_mapping() -> Dict[str, str]:
+    """Get District → Zone mapping."""
 
-## Files
+# scripts/osm_batch_pipeline.py
+def load_osm_capacity(path: str = "data/h3_osm_capacity.parquet") -> pd.DataFrame:
+    """Load OSM capacity from parquet."""
 
-```
-src/pipeline/
-├── spatial_ensemble_pipeline.py     # Main pipeline
-├── weather_ensemble.py              # Core ensemble logic
-├── nchmf_spatial_lookup.py         # NCHMF O(1) lookups
-└── plugins/
-    ├── hsdc_plugin.py              # HSDC rainfall API
-    ├── owm_plugin.py               # OpenWeatherMap
-    ├── vcw_plugin.py               # Visual Crossing
-    └── nchmf_plugin.py             # NCHMF crawler
-
-tests/
-├── test_spatial_ensemble.py        # Spatial pipeline tests
-└── test_weather_ensemble.py        # Ensemble tests
+def merge_osm_to_weather(weather_df: pd.DataFrame) -> pd.DataFrame:
+    """Merge OSM capacity to weather DataFrame."""
 ```
 
 ## Performance
 
-- **Lookup time**: ~1-5 microseconds per hexagon (3 dict lookups)
-- **Total lookup time**: ~5-10ms for all 1,145 hexagons
-- **API calls needed**: 2 (OWM, VCW) × 1,145 = 2,290 calls
-  - Can be batched/parallelized
-- **NCHMF**: 0 API calls at runtime (pre-computed + cached)
+| Operation | Time | Notes |
+|-----------|------|-------|
+| H3 lookup | ~1-5 µs | Per hex |
+| Full grid (1145 hexes) | ~5-10 ms | |
+| OSM processing (142K ways) | ~30-60s | One-time |
+| OSM parquet load | ~50 ms | Cached |
+| NCHMF lookup | ~1-5 µs | 3 dict lookups |
+
+## Files
+
+```
+scripts/
+├── osm_batch_pipeline.py     # OSM batch processing pipeline
+├── fetch_osm_retry.py       # Overpass API fetcher
+├── process_osm_h3api.py     # H3 API processor
+
+src/pipeline/
+├── spatial_ensemble_pipeline.py  # Weather → H3 mapping
+└── nchmf_spatial_lookup.py     # NCHMF O(1) lookup
+
+data/
+├── h3_osm_capacity.parquet    # OSM capacity (168 KB)
+├── h3_osm_capacity.csv        # Human readable
+└── h3_osm_capacity_meta.json # Metadata
+```

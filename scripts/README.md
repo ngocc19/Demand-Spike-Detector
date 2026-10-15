@@ -1,177 +1,244 @@
-# Realtime Crawler Scripts
+# Scripts Documentation
 
-Thư mục chứa các script để deploy và quản lý Realtime Weather Crawler.
+Thư mục chứa các script để thu thập dữ liệu, xử lý batch, và real-time crawling.
 
-## Cấu Trúc File
+## Scripts Overview
 
 ```
 scripts/
-├── realtime_crawler.py           # Script chính - crawl dữ liệu real-time
-├── run_crawler.ps1               # Wrapper cho Windows (Task Scheduler)
-├── run_crawler.sh                # Wrapper cho Linux (Cronjob)
-├── install_crawler_task.ps1      # Script cài đặt Task Scheduler (Windows)
-├── uninstall_crawler_task.ps1    # Script gỡ Task Scheduler (Windows)
-├── install_cron.sh               # Script cài đặt Cronjob (Linux)
-├── uninstall_cron.sh            # Script gỡ Cronjob (Linux)
-└── check_crawler_status.ps1     # Script kiểm tra trạng thái (Windows)
+├── backfill_weather.py           # Backfill historical weather data
+├── backfill_with_8keys.py      # Bulk backfill với 8 API keys
+├── processor.py                # Process raw data → features
+├── demo_pipeline.py             # Demo pipeline execution
+├── demo_preprocessor.py        # Demo preprocessor
+├── merge_holidays.py           # Merge holiday data
+├── checkpoint.py               # Checkpoint utilities
+├── extractor.py                # Data extraction
+├── h3_mapper.py               # H3 mapping utilities
+│
+├── realtime_crawler.py         # Real-time crawler (15 min)
+├── run_crawler.ps1            # Windows wrapper
+├── run_crawler.sh             # Linux wrapper
+├── install_crawler_task.ps1    # Windows Task Scheduler setup
+├── uninstall_crawler_task.ps1  # Uninstall Windows task
+└── check_crawler_status.ps1   # Status checker
+│
+├── fetch_osm_retry.py          # Fetch OSM from Overpass API
+├── process_osm_h3api.py        # Process OSM → Parquet (H3 API)
+└── osm_batch_pipeline.py       # OSM batch pipeline (main entry)
 ```
 
 ---
 
-## WINDOWS - Hướng Dẫn Sử Dụng
+## Weather Backfill Scripts
 
-### Bước 1: Cài Đặt (Chạy 1 lần)
+### backfill_weather.py
 
-1. **Mở PowerShell với quyền Administrator**
-   - Click chuột phải vào Start Menu
-   - Chọn "Terminal (Admin)" hoặc "Windows PowerShell (Admin)"
+Fetch historical weather data từ VCW, OWM, HSDC.
 
-2. **Chạy script cài đặt**
-   ```powershell
-   cd D:\Demand-Spike-Detector\scripts
-   .\install_crawler_task.ps1
-   ```
-
-3. **Kiểm tra Task Scheduler**
-   - Nhấn `Win + R` → gõ `taskschd.msc` → Enter
-   - Tìm task: `RealtimeCrawler_15min`
-
-### Bước 2: Kiểm Tra Trạng Thái
-
-```powershell
-# Kiểm tra nhanh
-.\check_crawler_status.ps1
-
-# Xem log real-time
-Get-Content "D:\Demand-Spike-Detector\data\crawler_cron.log" -Tail 50 -Wait
+```bash
+python scripts/backfill_weather.py
 ```
 
-### Bước 3: Quản Lý Task
+### backfill_with_8keys.py
+
+Bulk backfill với multiple API keys (8 keys).
+
+```bash
+python scripts/backfill_with_8keys.py
+```
+
+---
+
+## OSM Batch Pipeline
+
+### Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OSM BATCH PIPELINE                                                       │
+│                                                                             │
+│  ONE-TIME API CALL → PARQUET STORAGE → OFFLINE MULTI-USE                 │
+│                                                                             │
+│  Step 1: python scripts/fetch_osm_retry.py (Fetch OSM data)              │
+│  Step 2: python scripts/process_osm_h3api.py (Process → Parquet)         │
+│  Step 3: python scripts/osm_batch_pipeline.py --verify (Verify)          │
+│                                                                             │
+│  OR: python scripts/osm_batch_pipeline.py --full (Run all at once)        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Commands
+
+```bash
+# Check status
+python scripts/osm_batch_pipeline.py --status
+
+# Full pipeline: Fetch → Process → Verify
+python scripts/osm_batch_pipeline.py --full
+
+# Individual steps
+python scripts/osm_batch_pipeline.py --fetch    # Fetch từ Overpass API
+python scripts/osm_batch_pipeline.py --process  # Process → Parquet
+python scripts/osm_batch_pipeline.py --verify   # Verify coverage
+python scripts/osm_batch_pipeline.py --load     # Load OSM data
+python scripts/osm_batch_pipeline.py --demo      # Demo merge to weather
+```
+
+### Usage in Training Code
+
+```python
+from scripts.osm_batch_pipeline import merge_osm_to_weather
+
+# Load weather data
+weather_df = pd.read_parquet('data/weather_anchors_30T_merged.parquet')
+
+# Add OSM capacity features
+weather_df = merge_osm_to_weather(weather_df)
+
+# Ready for training!
+```
+
+### Output Files
+
+| File | Size | Description |
+|------|------|-------------|
+| `data/h3_osm_capacity.parquet` | ~168KB | **Main file for training** |
+| `data/h3_osm_capacity.csv` | ~400KB | Human readable |
+| `data/h3_osm_capacity_meta.json` | 268B | Metadata |
+
+### Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total hexes | 3,997 |
+| Hexes with roads | 1,806 |
+| Weather anchors | 6 (HoanKiem, CauGiay, HoangMai, LongBien, TayHo, NoiBai) |
+| Weather hexes covered | 6/6 (100%) |
+| Coverage | ✅ Full |
+
+---
+
+## Real-time Crawler
+
+### Windows Setup
 
 ```powershell
-# Dừng task
-Stop-ScheduledTask -TaskName "RealtimeCrawler_15min"
+# Install Task Scheduler
+cd D:\Demand-Spike-Detector\scripts
+.\install_crawler_task.ps1
 
-# Bắt đầu task
-Start-ScheduledTask -TaskName "RealtimeCrawler_15min"
+# Check status
+.\check_crawler_status.ps1
 
-# Gỡ cài đặt
+# Uninstall
 .\uninstall_crawler_task.ps1
 ```
 
----
-
-## LINUX - Hướng Dẫn Sử Dụng
-
-### Bước 1: Cài Đặt (Chạy 1 lần)
+### Linux Setup
 
 ```bash
-# Phân quyền cho script
-chmod +x scripts/run_crawler.sh
-chmod +x scripts/install_cron.sh
-
-# Chạy script cài đặt
+# Install cron
 ./scripts/install_cron.sh
-```
 
-### Bước 2: Kiểm Tra
-
-```bash
-# Xem cron job đã thêm
-crontab -l
-
-# Xem log real-time
-tail -f /opt/demand-spike-detector/data/crawler_cron.log
-
-# Đếm số lần chạy trong ngày
-grep "$(date '+%Y-%m-%d')" /opt/demand-spike-detector/data/crawler_cron.log | grep "\[START\]" | wc -l
-```
-
-### Bước 3: Quản Lý Cron
-
-```bash
-# Gỡ cài đặt
+# Uninstall
 ./scripts/uninstall_cron.sh
-
-# Hoặc thủ công
-crontab -e
-# Xóa 4 dòng liên quan đến realtime_crawler
 ```
 
----
+### Manual Run
 
-## Cấu Hình
-
-### Windows - Sửa đường dẫn trong file
-
-Mở `run_crawler.ps1` và sửa dòng:
-```powershell
-$ProjectDir = "D:\Demand-Spike-Detector"  # SỬA ĐƯỜNG DẪN TẠI ĐÂY
-```
-
-### Linux - Sửa đường dẫn trong file
-
-Mở `run_crawler.sh` và sửa dòng:
 ```bash
-PROJECT_DIR="/opt/demand-spike-detector"  # SỬA ĐƯỜNG DẪN TẠI ĐÂY
+python scripts/realtime_crawler.py
+```
+
+### Cron Schedule
+
+```
+*/15 * * * *  # Every 15 minutes
 ```
 
 ---
 
-## Output
-
-### Log Files
-- **Windows:** `data/crawler_cron.log`
-- **Linux:** `/opt/demand-spike-detector/data/crawler_cron.log`
-
-### Data Lake
-- **Windows:** `data/realtime_lake/weather_YYYY-MM-DD.parquet`
-- **Linux:** `/opt/demand-spike-detector/data/realtime_lake/weather_YYYY-MM-DD.parquet`
-
----
-
-## Cron Expression (Linux)
+## Data Flow
 
 ```
-*/15 * * * * /opt/demand-spike-detector/scripts/run_crawler.sh >> /opt/demand-spike-detector/data/cron_wrapper.log 2>&1
-```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BATCH PIPELINE                                                            │
+│                                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐            │
+│  │  Backfill   │───▶│   Process    │───▶│   Merge      │            │
+│  │  Weather    │    │   (H3)      │    │   OSM        │            │
+│  └──────────────┘    └──────────────┘    └──────────────┘            │
+│                                              │                           │
+│                                              ▼                           │
+│                             ┌──────────────────────────────┐              │
+│                             │  weather_anchors_30T_merged │              │
+│                             │  + h3_osm_capacity.parquet  │              │
+│                             └──────────────────────────────┘              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-| Vị trí | Giá trị | Ý nghĩa |
-|---------|---------|----------|
-| `*/15` | Phút | Mỗi 15 phút |
-| `*` | Giờ | Mọi giờ |
-| `*` | Ngày | Mọi ngày |
-| `*` | Tháng | Mọi tháng |
-| `*` | Thứ | Mọi thứ |
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  REAL-TIME PIPELINE                                                        │
+│                                                                             │
+│  Every 15 min:                                                            │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                   │
+│  │   OWM   │  │   VCW   │  │  HSDC   │  │  NCHMF  │                   │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘                   │
+│       └─────────────┴─────────────┴─────────────┘                       │
+│                              │                                           │
+│                              ▼                                           │
+│                   ┌──────────────────┐                                 │
+│                   │  Ensemble        │                                 │
+│                   │  Aggregator      │                                 │
+│                   └────────┬─────────┘                                 │
+│                            │                                            │
+│                            ▼                                            │
+│                   ┌──────────────────┐                                 │
+│                   │  realtime_lake/  │                                 │
+│                   │  weather_*.parquet│                                 │
+│                   └──────────────────┘                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Troubleshooting
 
-### Windows
+### OSM Pipeline
 
-**Task không chạy:**
-```powershell
-# Kiểm tra lịch sử
-Get-ScheduledTaskInfo -TaskName "RealtimeCrawler_15min"
-
-# Xem chi tiết task
-Get-ScheduledTask -TaskName "RealtimeCrawler_15min" | Get-ScheduledTaskInfo
-
-# Chạy thủ công để debug
-.\run_crawler.ps1
-```
-
-### Linux
-
-**Cron không chạy:**
+**"Static OSM data not found"**
 ```bash
-# Kiểm tra cron service
-sudo systemctl status cron
-
-# Xem log hệ thống
-grep CRON /var/log/syslog | tail -20
-
-# Test chạy thủ công
-/opt/demand-spike-detector/scripts/run_crawler.sh
+python scripts/osm_batch_pipeline.py --full
 ```
+
+**"Permission denied" on Windows**
+```powershell
+# Run as Administrator
+```
+
+### Real-time Crawler
+
+**"Task not found"**
+```powershell
+.\install_crawler_task.ps1
+```
+
+**"API timeout"**
+- Check internet connection
+- Verify API keys are valid
+- Check API rate limits
+
+---
+
+## Output Locations
+
+| Data Type | Location |
+|-----------|----------|
+| Weather backfill | `data/weather_anchors_30T_merged.parquet` |
+| OSM capacity | `data/h3_osm_capacity.parquet` |
+| Real-time data | `data/realtime_lake/weather_YYYY-MM-DD.parquet` |
+| Logs (Windows) | `data/crawler_cron.log` |
+| Logs (Linux) | `/opt/demand-spike-detector/data/crawler_cron.log` |
